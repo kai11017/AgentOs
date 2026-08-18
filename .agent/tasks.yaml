@@ -1,0 +1,52 @@
+- task_id: WF-001
+  title: "Scaffold Agent Control Plane & Base Boilerplate"
+  description: "Initialize the agent tracking framework (.agent directory) and the base directory structure for frontend, backend, docker, and MCP tools."
+  goal: "Provide a foundational structure for both human developers and AI agents to track state, architecture, and task history deterministically."
+  scope:
+    - .agent/*
+    - AGENTS.md
+    - frontend/*
+    - backend/*
+    - docker/*
+    - mcp_tools/*
+  constraints:
+    - Do not implement application logic yet.
+    - Only establish empty structural boilerplate and agent markdown context.
+  acceptance_criteria:
+    - Agent context directory (.agent) contains project, architecture, state, decisions, and conventions markdown files.
+    - AGENTS.md exists at the root.
+    - Directory scaffold created for frontend, backend, docker, and tools.
+  risk_level: low
+  created_at: 2026-08-19T00:00:00Z
+  started_at: 2026-08-19T00:15:00Z
+  completed_at: 2026-08-19T00:30:00Z
+  agent: "Gemini 3.1 Pro (High)"
+  model: "Gemini 3.1 Pro (High)"
+  prompt_version: "1.0"
+  base_commit: "115bd31"
+  branch: "main"
+  files_changed:
+    - AGENTS.md
+    - .agent/project.md
+    - .agent/architecture.md
+    - .agent/state.md
+    - .agent/decisions.md
+    - .agent/conventions.md
+    - .agent/tasks.yaml
+    - .agent/sessions/2026-08-19-001.md
+    - frontend/*
+    - backend/*
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  final_commit: "pending"
+  summary: "Successfully scaffolded the `.agent` control plane and the foundational project directory boilerplate."
+  known_issues: "Validation tools (lint, typecheck, tests) are placeholders since no actual application code exists yet."
+  next_steps:
+    - "Initialize the React frontend application."
+    - "Initialize the FastAPI backend application."
