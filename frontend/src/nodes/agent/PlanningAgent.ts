@@ -1,0 +1,87 @@
+import type { NodeDefinition } from '@/types/node-definitions';
+
+export const planningAgentNode: NodeDefinition = {
+  type: 'planning-agent',
+  category: 'agent',
+  displayName: 'Planning Agent',
+  description: 'An agent that decomposes complex tasks into structured plans using various planning strategies.',
+  icon: 'ListTodo',
+  color: 'var(--node-agent)',
+  inputs: [
+    {
+      id: 'input',
+      type: 'target',
+      position: 'top',
+      label: 'Input',
+    },
+  ],
+  outputs: [
+    {
+      id: 'output',
+      type: 'source',
+      position: 'bottom',
+      label: 'Output',
+    },
+  ],
+  configFields: [
+    {
+      name: 'name',
+      label: 'Agent Name',
+      type: 'text',
+      required: true,
+      placeholder: 'My Planning Agent',
+      description: 'A unique name for this agent instance.',
+      group: 'General',
+    },
+    {
+      name: 'systemPrompt',
+      label: 'System Prompt',
+      type: 'textarea',
+      required: true,
+      placeholder: 'You are a strategic planning agent...',
+      description: 'The system prompt that defines the planning behavior.',
+      group: 'General',
+    },
+    {
+      name: 'model',
+      label: 'Model',
+      type: 'model-selector',
+      required: true,
+      description: 'The language model to use for planning.',
+      group: 'Model',
+    },
+    {
+      name: 'planningStrategy',
+      label: 'Planning Strategy',
+      type: 'select',
+      required: true,
+      defaultValue: 'sequential',
+      description: 'The strategy used to decompose and plan tasks.',
+      options: [
+        { label: 'Sequential', value: 'sequential', description: 'Linear step-by-step planning' },
+        { label: 'Tree of Thought', value: 'tree-of-thought', description: 'Explore multiple reasoning paths' },
+        { label: 'ReAct', value: 'react', description: 'Reasoning and acting interleaved' },
+      ],
+      group: 'Strategy',
+    },
+    {
+      name: 'maxSteps',
+      label: 'Max Steps',
+      type: 'number',
+      required: false,
+      defaultValue: 20,
+      description: 'Maximum number of planning steps allowed.',
+      validation: { min: 1, max: 200 },
+      group: 'Strategy',
+    },
+  ],
+  defaultConfig: {
+    name: '',
+    systemPrompt: '',
+    model: '',
+    planningStrategy: 'sequential',
+    maxSteps: 20,
+  },
+  version: 1,
+  tags: ['planning', 'strategy', 'decomposition'],
+};

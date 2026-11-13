@@ -1,0 +1,81 @@
+import type { NodeDefinition } from '@/types/node-definitions';
+
+export const reviewerAgentNode: NodeDefinition = {
+  type: 'reviewer-agent',
+  category: 'agent',
+  displayName: 'Reviewer Agent',
+  description: 'An agent that reviews and validates outputs from other agents against defined criteria.',
+  icon: 'CheckCircle',
+  color: 'var(--node-agent)',
+  inputs: [
+    {
+      id: 'input',
+      type: 'target',
+      position: 'top',
+      label: 'Input',
+    },
+  ],
+  outputs: [
+    {
+      id: 'output',
+      type: 'source',
+      position: 'bottom',
+      label: 'Output',
+    },
+  ],
+  configFields: [
+    {
+      name: 'name',
+      label: 'Agent Name',
+      type: 'text',
+      required: true,
+      placeholder: 'My Reviewer Agent',
+      description: 'A unique name for this agent instance.',
+      group: 'General',
+    },
+    {
+      name: 'systemPrompt',
+      label: 'System Prompt',
+      type: 'textarea',
+      required: true,
+      placeholder: 'You are a quality assurance reviewer...',
+      description: 'The system prompt that defines the review behavior.',
+      group: 'General',
+    },
+    {
+      name: 'model',
+      label: 'Model',
+      type: 'model-selector',
+      required: true,
+      description: 'The language model to use for review.',
+      group: 'Model',
+    },
+    {
+      name: 'reviewCriteria',
+      label: 'Review Criteria',
+      type: 'textarea',
+      required: true,
+      placeholder: 'Check for accuracy, completeness, and proper formatting...',
+      description: 'Detailed criteria the agent uses to evaluate outputs.',
+      group: 'Review',
+    },
+    {
+      name: 'strictMode',
+      label: 'Strict Mode',
+      type: 'boolean',
+      required: false,
+      defaultValue: false,
+      description: 'When enabled, the agent will reject outputs that do not fully meet all criteria.',
+      group: 'Review',
+    },
+  ],
+  defaultConfig: {
+    name: '',
+    systemPrompt: '',
+    model: '',
+    reviewCriteria: '',
+    strictMode: false,
+  },
+  version: 1,
+  tags: ['review', 'validation', 'quality'],
+};

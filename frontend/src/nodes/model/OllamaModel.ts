@@ -1,0 +1,90 @@
+import type { NodeDefinition } from '@/types/node-definitions';
+
+export const ollamaModelNode: NodeDefinition = {
+  type: 'ollama-model',
+  category: 'model',
+  displayName: 'Ollama Local Model',
+  description: 'Run local LLMs privacy-first using Ollama (Llama 3, Mistral, Qwen, DeepSeek, etc.).',
+  icon: 'Server',
+  color: 'var(--node-model)',
+  inputs: [
+    {
+      id: 'input',
+      type: 'target',
+      position: 'top',
+      label: 'Prompt / Messages',
+    },
+  ],
+  outputs: [
+    {
+      id: 'output',
+      type: 'source',
+      position: 'bottom',
+      label: 'Model Response',
+    },
+  ],
+  configFields: [
+    {
+      name: 'modelName',
+      label: 'Model Name',
+      type: 'select',
+      required: true,
+      defaultValue: 'llama3.2',
+      description: 'The Ollama model identifier to run locally.',
+      options: [
+        { label: 'Llama 3.2 (3B)', value: 'llama3.2' },
+        { label: 'Llama 3.3 (70B)', value: 'llama3.3' },
+        { label: 'Qwen 2.5 Coder (7B)', value: 'qwen2.5-coder:7b' },
+        { label: 'Mistral (7B)', value: 'mistral' },
+        { label: 'DeepSeek R1 Distill (8B)', value: 'deepseek-r1:8b' },
+        { label: 'Phi-3 Mini', value: 'phi3:mini' },
+      ],
+      group: 'Model',
+    },
+    {
+      name: 'baseUrl',
+      label: 'Ollama Server URL',
+      type: 'text',
+      required: true,
+      defaultValue: 'http://localhost:11434',
+      placeholder: 'http://localhost:11434',
+      description: 'Base URL of the local Ollama instance.',
+      group: 'Connection',
+    },
+    {
+      name: 'temperature',
+      label: 'Temperature',
+      type: 'slider',
+      defaultValue: 0.7,
+      description: 'Controls randomness. Lower is more deterministic.',
+      validation: { min: 0, max: 2 },
+      group: 'Parameters',
+    },
+    {
+      name: 'contextWindow',
+      label: 'Context Window (num_ctx)',
+      type: 'number',
+      defaultValue: 4096,
+      description: 'Maximum context window size in tokens.',
+      group: 'Parameters',
+    },
+    {
+      name: 'maxTokens',
+      label: 'Max Output Tokens',
+      type: 'number',
+      defaultValue: 2048,
+      description: 'Maximum number of tokens to generate.',
+      group: 'Parameters',
+    },
+  ],
+  defaultConfig: {
+    modelName: 'llama3.2',
+    baseUrl: 'http://localhost:11434',
+    temperature: 0.7,
+    contextWindow: 4096,
+    maxTokens: 2048,
+  },
+  version: 1,
+  tags: ['local', 'llm', 'ollama', 'privacy'],
+};
+

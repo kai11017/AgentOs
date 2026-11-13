@@ -1,46 +1,25 @@
 # Current State
 
 ## Last Updated
-2026-08-19
+2026-11-13
 
 ## Current Commit
-115bd31
-
-## Current Branch
-main
+3ec60b2
 
 ## Current Milestone
-MVP Project Scaffolding and Control Plane Initialization
+Production Backend Architecture & Vertical Slice (PostgreSQL + Native/Docker Ollama)
 
 ## Completed
-- Defined project architecture and documented in README
-- Scaffolded basic directory structure (frontend, backend, docker, mcp_tools)
-- Initialized Agent Development Control Plane (`AGENTS.md`, `.agent/*`)
-
-## In Progress
-- Initializing the boilerplate for frontend, backend, and docker containers.
-
-## Current Task
-Create the Agent Development Control Plane foundation.
-
-## Current Implementation
-The `.agent/` directory is being populated with context files, task models, and session tracking functionality to support AI agent autonomy.
-
-## Known Issues
-- Currently empty boilerplate; no functional code implemented yet.
-- Test suites and validation pipelines are undefined.
-
-## Blockers
-- None at this time.
-
-## Last Validation
-- lint: NOT RUN (No code yet)
-- typecheck: NOT RUN (No code yet)
-- unit tests: NOT RUN (No code yet)
-- integration tests: NOT RUN (No code yet)
-- build: NOT RUN (No code yet)
+- **Architecture Finalized & Hardened**:
+  - **Database**: Standardized on **PostgreSQL** (`asyncpg` + `SQLAlchemy 2.0`) with Docker container (`postgres:16-alpine`) and Supabase support.
+  - **Model Runtime**: Native Ollama detection at `127.0.0.1:11434` first (preserving Apple Silicon Metal GPU and native CUDA performance) with Docker container as an optional fallback.
+  - **Security**: Local token authentication (`X-AgentOS-Token`), strict CORS, encrypted credentials with Fernet, SSRF protection on HTTP nodes, sandboxed code execution, and sandboxed expression evaluation (`simpleeval` instead of `eval`).
+  - **Durability**: Node-level database state persistence for crash recovery and pause/resume, concurrency semaphores to protect local GPU VRAM, and `WAIT_ALL` merge semantics.
+  - **Real-Time Observability**: Resumable WebSockets with event sequence IDs and token tracking.
+- **Frontend UI & Canvas**: Production build passing cleanly with Outfit & Plus Jakarta Sans typography, intensified colors, and Left-to-Right connection routing.
 
 ## Next Steps
-1. Initialize a Vite/NextJS app in the `frontend/` directory.
-2. Initialize FastAPI boilerplate and Celery setup in the `backend/` directory.
-3. Set up the `docker-compose.yml` file to run Redis and PostgreSQL/Supabase.
+1. Execute **Phase 1: Vertical Slice**:
+   - Scaffold `backend/` directory.
+   - Configure PostgreSQL async engine and Pydantic schemas.
+   - Implement DAG execution engine running `Gmail Trigger → AI Agent → Success Output` end-to-end with WebSocket streaming.

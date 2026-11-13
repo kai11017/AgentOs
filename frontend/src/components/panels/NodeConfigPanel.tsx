@@ -1,0 +1,716 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useUIStore } from '@/stores/ui-store';
+import { useWorkflowStore } from '@/stores/workflow-store';
+import nodeRegistry from '@/nodes/registry';
+import { getLucideIcon } from '@/lib/utils';
+import {
+  Check,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
+  Paperclip,
+  Mail,
+  Database,
+  Bot,
+  Zap,
+  GitBranch,
+  Terminal,
+} from 'lucide-react';
+
+interface UploadedFileItem {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+}
+
+export const NodeConfigPanel: React.FC = () => {
+  const isConfigPanelOpen = useUIStore((s) => s.isConfigPanelOpen);
+  const selectedNodeId = useUIStore((s) => s.selectedNodeId);
+
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || nodes[0];
+  const definition = selectedNode ? nodeRegistry.get(selectedNode.data.definitionType) : null;
+
+  const [activeTab, setActiveTab] = useState<'node' | 'output' | 'debug'>('node');
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Unified config form state for the currently selected node
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state whenever selected node changes
+  useEffect(() => {
+    if (selectedNode) {
+      const existingConfig = selectedNode.data.config || {};
+      const defDefaults = definition?.defaultConfig || {};
+
+      // Seed smart defaults tailored to node type if not already populated
+      const nodeType = selectedNode.data.definitionType;
+      const nodeLabel = (selectedNode.data.label || '').toLowerCase();
+
+      let initialTailoredConfig: Record<string, any> = {
+        ...defDefaults,
+        ...existingConfig,
+      };
+
+      // Email node profile
+      if (nodeLabel.includes('email') || nodeType === 'http-request') {
+        initialTailoredConfig = {
+          fromEmail: 'rippika@gmail.com',
+          toEmail: 'team@company.com',
+          subject: 'Weekly Research Summary & Key Insights',
+          bodyType: 'HTML',
+          emailBody:
+            'Hello Team,\n\nPlease find attached the automated research analysis and action items synthesized by the AI Agent.',
+          onError: 'Retry twice, then notify me',
+          attachments: ['research-report.pdf'],
+          ...initialTailoredConfig,
+        };
+      } else if (nodeLabel.includes('notion') || nodeType === 'database') {
+        // Notion / Database profile
+        initialTailoredConfig = {
+          service: 'Notion',
+          operation: 'Create Page in Database',
+          databaseId: 'Research Notes (db_82f1a9)',
+          titleMapping: '{{$json.title || "AI Research Brief"}}',
+          contentMapping: '{{$json.summary || $json.body}}',
+          tags: 'AI, Automated, Research',
+          onError: 'Halt workflow',
+          ...initialTailoredConfig,
+        };
+      } else if (nodeType === 'trigger' || nodeLabel.includes('trigger')) {
+        // Trigger profile
+        initialTailoredConfig = {
+          triggerEvent: 'New Email Received',
+          account: 'rippika@gmail.com',
+          filterFolder: 'INBOX / Important',
+          pollInterval: 'Every 1 minute (Realtime Webhook)',
+          fetchAttachments: true,
+          ...initialTailoredConfig,
+        };
+      } else if (nodeType === 'doc-reference' || nodeLabel.includes('doc') || nodeLabel.includes('ref')) {
+        // Document / Image Reference profile
+        initialTailoredConfig = {
+          title: 'Q4 Product & Architecture Brief',
+          docInstructions: 'Use these documents and diagrams as ground truth for synthesis.',
+          extractText: true,
+          files: existingConfig.files || [
+            { id: 'f-1', name: 'Q4_Strategy_Brief.pdf', size: '2.4 MB', type: 'application/pdf' },
+            { id: 'f-2', name: 'Agent_Architecture.png', size: '840 KB', type: 'image/png' },
+          ],
+          ...initialTailoredConfig,
+        };
+      } else if (nodeType.includes('agent')) {
+        // AI Agent profile
+        initialTailoredConfig = {
+          model: 'GPT-4o mini',
+          instructions:
+            'Summarize the incoming email, research the topic on the web, and return key insights with sources.',
+          tools: ['Web search', 'Memory', 'JS skill'],
+          onError: 'Retry twice, then notify me',
+          temperature: 0.7,
+          ...initialTailoredConfig,
+        };
+      }
+
+      setConfig(initialTailoredConfig);
+      setIsSaved(false);
+    }
+  }, [selectedNode?.id, selectedNode?.data.definitionType]);
+
+  if (!isConfigPanelOpen || !selectedNode) {
+    return null;
+  }
+
+  const handleFieldChange = (key: string, value: any) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
+    setIsSaved(false);
+  };
+
+  const handleSave = () => {
+    updateNodeData(selectedNode.id, {
+      config: {
+        ...selectedNode.data.config,
+        ...config,
+      },
+    });
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  // Mock file upload handler
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploaded = e.target.files;
+    if (!uploaded || uploaded.length === 0) return;
+
+    const newFiles: UploadedFileItem[] = Array.from(uploaded).map((f) => ({
+      id: `file-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      name: f.name,
+      size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
+      type: f.type || 'document',
+    }));
+
+    const currentFiles = config.files || [];
+    handleFieldChange('files', [...currentFiles, ...newFiles]);
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    const currentFiles: UploadedFileItem[] = config.files || [];
+    handleFieldChange(
+      'files',
+      currentFiles.filter((f) => f.id !== fileId)
+    );
+  };
+
+  const nodeLabelLower = (selectedNode.data.label || '').toLowerCase();
+  const nodeType = selectedNode.data.definitionType;
+
+  const isEmailNode = nodeLabelLower.includes('email') || nodeLabelLower.includes('mail');
+  const isTriggerNode = nodeType === 'trigger' || nodeLabelLower.includes('trigger');
+  const isDatabaseNode = nodeType === 'database' || nodeLabelLower.includes('notion');
+  const isDocReferenceNode =
+    nodeType === 'doc-reference' || nodeLabelLower.includes('doc') || nodeLabelLower.includes('ref');
+  const isAgentNode = nodeType.includes('agent');
+  const isConditionNode = nodeType === 'if-else';
+
+  return (
+    <aside className="w-80 shrink-0 bg-white border-l border-[#ded8cc] flex flex-col justify-between h-full select-none z-30 shadow-xs">
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top Segmented Tabs: Node | Output | Debug */}
+        <div className="flex items-center px-4 pt-3 border-b border-[#ded8cc] gap-6 text-xs font-bold text-[#6a7c72]">
+          <button
+            type="button"
+            onClick={() => setActiveTab('node')}
+            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+              activeTab === 'node'
+                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                : 'hover:text-[#0e2118]'
+            }`}
+          >
+            Node
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('output')}
+            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+              activeTab === 'output'
+                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                : 'hover:text-[#0e2118]'
+            }`}
+          >
+            Output
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('debug')}
+            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+              activeTab === 'debug'
+                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                : 'hover:text-[#0e2118]'
+            }`}
+          >
+            Debug
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 flex-1 overflow-y-auto space-y-4">
+          {activeTab === 'node' && (
+            <>
+              {/* Node Identity Header */}
+              <div className="flex items-center gap-3 pb-3 border-b border-[#f0ede4]">
+                <div className="w-9 h-9 rounded-xl bg-[#f3e8ff] text-[#7c3aed] flex items-center justify-center shrink-0 shadow-2xs ring-1 ring-[#d8b4fe]">
+                  {getLucideIcon(definition?.icon || 'Box', 'w-4 h-4 stroke-[2.2]')}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-sm font-bold text-[#0e2118] truncate">
+                    {selectedNode.data.label || definition?.displayName || 'Node'}
+                  </h3>
+                  <p className="font-sans text-[11px] font-semibold text-[#6a7c72] truncate">
+                    {definition?.displayName || 'Workflow Node'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 1. EMAIL NODE CONFIGURATION (When user clicks Send Email / Gmail) */}
+              {isEmailNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      From Email (Account)
+                    </label>
+                    <input
+                      type="text"
+                      value={config.fromEmail || 'rippika@gmail.com'}
+                      onChange={(e) => handleFieldChange('fromEmail', e.target.value)}
+                      placeholder="e.g. sender@company.com"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      To Email (Recipient) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={config.toEmail || ''}
+                      onChange={(e) => handleFieldChange('toEmail', e.target.value)}
+                      placeholder="e.g. team@company.com or {{$json.email}}"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Subject
+                    </label>
+                    <input
+                      type="text"
+                      value={config.subject || ''}
+                      onChange={(e) => handleFieldChange('subject', e.target.value)}
+                      placeholder="e.g. AI Research Digest"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-[#5c6861]">
+                        Message Body
+                      </label>
+                      <span className="text-[10px] text-[#78857e] font-mono">HTML / Markdown</span>
+                    </div>
+                    <textarea
+                      rows={4}
+                      value={config.emailBody || ''}
+                      onChange={(e) => handleFieldChange('emailBody', e.target.value)}
+                      placeholder="Write message or embed variables like {{$json.summary}}..."
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] leading-relaxed resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Attachments
+                    </label>
+                    <div className="flex items-center gap-2 p-2 bg-[#f5f2eb] rounded-xl border border-[#ded8cc] text-[11px] text-[#5c6861]">
+                      <Paperclip className="w-3.5 h-3.5 text-[#78857e]" />
+                      <span className="truncate flex-1">research-report.pdf</span>
+                      <span className="text-[10px] text-[#86948d]">Auto</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      On error
+                    </label>
+                    <input
+                      type="text"
+                      value={config.onError || 'Retry twice, then notify me'}
+                      onChange={(e) => handleFieldChange('onError', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 2. GMAIL / WEBHOOK TRIGGER NODE CONFIGURATION */}
+              {isTriggerNode && !isEmailNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Trigger Event
+                    </label>
+                    <select
+                      value={config.triggerEvent || 'New Email Received'}
+                      onChange={(e) => handleFieldChange('triggerEvent', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="New Email Received">New Email Received (Gmail)</option>
+                      <option value="New Attachment">New Attachment in Email</option>
+                      <option value="Webhook Call">Webhook Endpoint (HTTP POST)</option>
+                      <option value="Schedule">Schedule / Interval (Cron)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Account Connection
+                    </label>
+                    <input
+                      type="text"
+                      value={config.account || 'rippika@gmail.com'}
+                      onChange={(e) => handleFieldChange('account', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Filter / Folder
+                    </label>
+                    <input
+                      type="text"
+                      value={config.filterFolder || 'INBOX / Important'}
+                      onChange={(e) => handleFieldChange('filterFolder', e.target.value)}
+                      placeholder="e.g. label:unread or from:client@acme.com"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Polling Interval
+                    </label>
+                    <input
+                      type="text"
+                      value={config.pollInterval || 'Every 1 minute (Realtime Webhook)'}
+                      onChange={(e) => handleFieldChange('pollInterval', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 3. NOTION / DATABASE NODE CONFIGURATION */}
+              {isDatabaseNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Database Platform
+                    </label>
+                    <select
+                      value={config.service || 'Notion'}
+                      onChange={(e) => handleFieldChange('service', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="Notion">Notion Database</option>
+                      <option value="PostgreSQL">PostgreSQL / Supabase (pgvector)</option>
+                      <option value="SQLite">SQLite Local File</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Operation
+                    </label>
+                    <input
+                      type="text"
+                      value={config.operation || 'Create Page in Database'}
+                      onChange={(e) => handleFieldChange('operation', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Target Database ID / Table
+                    </label>
+                    <input
+                      type="text"
+                      value={config.databaseId || 'Research Notes (db_82f1a9)'}
+                      onChange={(e) => handleFieldChange('databaseId', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Title Property Mapping
+                    </label>
+                    <input
+                      type="text"
+                      value={config.titleMapping || '{{$json.title}}'}
+                      onChange={(e) => handleFieldChange('titleMapping', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 4. DOCUMENT / IMAGE REFERENCE NODE CONFIGURATION (User Request: upload files) */}
+              {isDocReferenceNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Reference Title
+                    </label>
+                    <input
+                      type="text"
+                      value={config.title || 'Q4 Product & Architecture Brief'}
+                      onChange={(e) => handleFieldChange('title', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  {/* Drag & Drop File Upload Dropzone */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Upload Reference Documents & Images
+                    </label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.txt,.md,.csv,.json"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-4 bg-[#fbf9f4] border-2 border-dashed border-[#dcd6c8] hover:border-[#1e4d3a] rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#f1ebfc] text-[#6b3fc9] flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold text-[#19221d]">
+                        Click to upload reference
+                      </span>
+                      <span className="text-[10px] text-[#78857e] mt-0.5">
+                        PDF, PNG, JPG, Markdown, CSV (up to 25MB)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Attached Files List */}
+                  {config.files && config.files.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#78857e]">
+                        Attached References ({config.files.length})
+                      </span>
+                      <div className="space-y-1.5">
+                        {config.files.map((file: UploadedFileItem) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-2 rounded-xl bg-[#f5f2eb] border border-[#ded8cc] text-xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {file.type.includes('image') ? (
+                                <ImageIcon className="w-3.5 h-3.5 text-[#1e6191] shrink-0" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-[#b85816] shrink-0" />
+                              )}
+                              <span className="truncate text-[11px] font-medium text-[#19221d]">
+                                {file.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] text-[#86948d]">{file.size}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(file.id)}
+                                className="p-1 text-[#86948d] hover:text-[#a83838] transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Instructions for AI Agent
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={config.docInstructions || ''}
+                      onChange={(e) => handleFieldChange('docInstructions', e.target.value)}
+                      placeholder="e.g. Consult Section 3 for revenue breakdown..."
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] leading-relaxed resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 5. AI AGENT NODE CONFIGURATION */}
+              {isAgentNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Model Selection
+                    </label>
+                    <select
+                      value={config.model || 'GPT-4o mini'}
+                      onChange={(e) => handleFieldChange('model', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="GPT-4o mini">GPT-4o mini (Fast & Efficient)</option>
+                      <option value="GPT-4o">GPT-4o (Omni Flagship)</option>
+                      <option value="Claude 3.7 Sonnet">Claude 3.7 Sonnet (Anthropic)</option>
+                      <option value="Llama 3.2 (Local Ollama)">Llama 3.2 (Local Ollama)</option>
+                      <option value="Qwen 2.5 Coder (7B)">Qwen 2.5 Coder (Local Ollama)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Instructions / System Prompt
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={config.instructions || ''}
+                      onChange={(e) => handleFieldChange('instructions', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] leading-relaxed resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-[#3d5045] uppercase tracking-wider">
+                      Tools connected
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#ffedd5] text-[#ea580c] border border-[#fed7aa] shadow-2xs">
+                        Web search
+                      </span>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd] shadow-2xs">
+                        Memory
+                      </span>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#d1fae5] text-[#059669] border border-[#a7f3d0] shadow-2xs">
+                        JS skill
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      On error
+                    </label>
+                    <input
+                      type="text"
+                      value={config.onError || 'Retry twice, then notify me'}
+                      onChange={(e) => handleFieldChange('onError', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 6. CONDITION NODE CONFIGURATION */}
+              {isConditionNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Property to Evaluate
+                    </label>
+                    <input
+                      type="text"
+                      value={config.property || '{{$json.status}}'}
+                      onChange={(e) => handleFieldChange('property', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Comparison Operator
+                    </label>
+                    <select
+                      value={config.operator || 'equals'}
+                      onChange={(e) => handleFieldChange('operator', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="equals">Equals</option>
+                      <option value="contains">Contains</option>
+                      <option value="not_empty">Is Not Empty</option>
+                      <option value="greater_than">Is Greater Than</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Compare Value
+                    </label>
+                    <input
+                      type="text"
+                      value={config.compareValue || 'approved'}
+                      onChange={(e) => handleFieldChange('compareValue', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 7. GENERIC / FALLBACK CONFIG FIELDS */}
+              {!isEmailNode && !isTriggerNode && !isDatabaseNode && !isDocReferenceNode && !isAgentNode && !isConditionNode && (
+                <div className="space-y-3">
+                  {definition?.configFields.map((field) => (
+                    <div key={field.name} className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[#5c6861]">
+                        {field.label}
+                      </label>
+                      <input
+                        type="text"
+                        value={String(config[field.name] ?? field.defaultValue ?? '')}
+                        onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'output' && (
+            <div className="space-y-3 text-xs">
+              <span className="text-[11px] font-bold text-[#5c6861] uppercase tracking-wider">
+                Node Output Data
+              </span>
+              <pre className="p-3 bg-[#f5f2eb] border border-[#ded8cc] rounded-xl text-[11px] font-mono text-[#19221d] overflow-x-auto">
+{JSON.stringify(
+  isEmailNode
+    ? { status: 'sent', messageId: 'msg_982fa3', recipient: config.toEmail || 'team@company.com' }
+    : isTriggerNode
+    ? { event: 'email_received', sender: 'john@example.com', subject: 'Urgent Q4 review' }
+    : isDocReferenceNode
+    ? { filesAttached: config.files?.length || 2, extractedTextLength: 4890 }
+    : { status: 'success', node: selectedNode.data.label, executedAt: new Date().toISOString() },
+  null,
+  2
+)}
+              </pre>
+            </div>
+          )}
+
+          {activeTab === 'debug' && (
+            <div className="space-y-2 text-xs text-[#5c6861]">
+              <span className="text-[11px] font-bold text-[#5c6861] uppercase tracking-wider">
+                Execution Trace
+              </span>
+              <div className="p-3 bg-[#f5f2eb] rounded-xl font-mono text-[10px] space-y-1">
+                <div>[0ms] Resolved node target: {selectedNode.id}</div>
+                <div>[14ms] Bound input payload schema: verified</div>
+                <div>[32ms] State serialized to workflow store</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Sticky Action: Save Changes Button */}
+      <div className="p-4 border-t border-[#ded8cc]">
+        <button
+          type="button"
+          onClick={handleSave}
+          className="w-full py-2.5 bg-[#15803d] hover:bg-[#166534] active:bg-[#14532d] text-white font-extrabold text-xs rounded-xl shadow-[0_2px_10px_rgba(21,128,61,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {isSaved ? (
+            <>
+              <Check className="w-4 h-4 stroke-[2.5]" /> Changes Applied
+            </>
+          ) : (
+            'Save changes'
+          )}
+        </button>
+      </div>
+    </aside>
+  );
+};

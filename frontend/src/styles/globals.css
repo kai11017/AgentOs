@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Outfit", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    /* Brand Forest Green Theme (Deep Obsidian Forest) */
+    --sidebar-bg: #091c14;
+    --sidebar-hover: #122f22;
+    --sidebar-active: #184230;
+    --sidebar-border: #153828;
+    --sidebar-text: #f0fdf4;
+    --sidebar-text-muted: #86a394;
+
+    /* Main Content Warm Sand / Cream Canvas */
+    --app-bg: #f5f2ea;
+    --canvas-bg: #f8f6f0;
+    --card-bg: #ffffff;
+    --card-border: #ddd7cb;
+    --card-border-hover: #beb5a3;
+
+    /* Primary Accent: Vivid Emerald Forest Green */
+    --primary-forest: #15803d;
+    --primary-forest-hover: #166534;
+    --primary-forest-dark: #0f4625;
+    --primary-forest-light: #dcfce7;
+    --primary-forest-text: #14532d;
+    --primary-emerald-glow: #22c55e;
+
+    /* Secondary Accent: Vivid High-Intensity Amber / Gold */
+    --accent-amber: #f59e0b;
+    --accent-amber-hover: #d97706;
+    --accent-amber-dark: #b45309;
+    --accent-amber-light: #fef3c7;
+    --accent-amber-glow: #fbbf24;
+
+    /* Vibrant Status Highlights */
+    --status-active-bg: #dcfce7;
+    --status-active-text: #15803d;
+    --status-active-border: #86efac;
+    --status-failing-bg: #fee2e2;
+    --status-failing-text: #dc2626;
+    --status-failing-border: #fca5a5;
+    --status-paused-bg: #fef3c7;
+    --status-paused-text: #b45309;
+    --status-paused-border: #fde68a;
+
+    /* High-legibility Typography */
+    --text-primary: #0e2118;
+    --text-secondary: #3d5045;
+    --text-muted: #6a7c72;
+
+    /* Saturated Category Highlights */
+    --node-agent: #8b5cf6;
+    --node-model: #0284c7;
+    --node-tool: #ea580c;
+    --node-control: #e11d48;
+    --node-data: #059669;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.012em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.035em;
+    font-weight: 700;
+  }
+
+  button, input, select, textarea {
+    font-family: var(--font-sans);
+  }
+
+  code, pre, kbd, samp, .font-mono {
+    font-family: var(--font-mono) !important;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* React Flow styling custom overrides for the cream canvas */
+.react-flow__pane {
+  background-color: var(--canvas-bg) !important;
+}
+
+.react-flow__node {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Intensified, crisp connection edges */
+.react-flow__edge-path {
+  stroke: #335d48 !important;
+  stroke-width: 2.6 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #16a34a !important;
+  stroke-width: 3.4 !important;
+  filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.55));
+}
+
+.react-flow__handle {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background-color: #2e664c !important;
+  border: 2.5px solid #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.react-flow__handle:hover {
+  background-color: #16a34a !important;
+  transform: scale(1.4);
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.85) !important;
+}
+
+.react-flow__controls {
+  border-radius: 12px !important;
+  border: 1px solid var(--card-border) !important;
+  background: white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid var(--card-border) !important;
+  color: var(--text-secondary) !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #f5f2eb !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cfc7b8;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b5ac9b;
+}
