@@ -3,8 +3,14 @@ from typing import List, Dict, Any
 from fastapi import APIRouter
 from pydantic import BaseModel
 from backend.app.core.config import settings
+from backend.app.services.docker_service import docker_service
 
 router = APIRouter(prefix="/models", tags=["Models"])
+
+@router.get("/docker/status")
+async def get_docker_status():
+    """Returns current Docker engine connectivity and container status."""
+    return docker_service.get_system_status()
 
 class ModelPullRequest(BaseModel):
     model: str = "llama3.2:3b"

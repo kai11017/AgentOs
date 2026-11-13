@@ -14,3 +14,4 @@ def cleanup_test_db():
             os.remove("./test_agentos.db")
         except Exception:
             pass
+

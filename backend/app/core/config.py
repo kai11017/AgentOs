@@ -13,11 +13,11 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     
-    # Database URL: Supports PostgreSQL (Docker / Supabase) with SQLite local fallback
+    # Database URL: Supports PostgreSQL (Docker on 5433 / Supabase) with SQLite local fallback
     DATABASE_URL: str = Field(
         default_factory=lambda: os.getenv(
             "DATABASE_URL", 
-            "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/agentos"
+            "postgresql+asyncpg://agentos:agentos@127.0.0.1:5433/agentos"
         )
     )
     

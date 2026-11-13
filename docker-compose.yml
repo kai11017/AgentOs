@@ -1,0 +1,44 @@
+services:
+  # AgentOS PostgreSQL Database Service
+  agentos-postgres:
+    image: postgres:16-alpine
+    container_name: agentos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agentos
+      POSTGRES_PASSWORD: agentos
+      POSTGRES_DB: agentos
+    ports:
+      # Port 5433 to avoid conflicts with other existing Postgres instances on 5432
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - agentos-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentos -d agentos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # AgentOS Local Model Container (Fallback when native Ollama is not installed)
+  agentos-ollama:
+    image: ollama/ollama:latest
+    container_name: agentos-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - agentos-ollama-data:/root/.ollama
+    # Note: On Windows with NVIDIA GPU, GPU passthrough can be enabled via:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  agentos-postgres-data:
+    name: agentos-postgres-data
+  agentos-ollama-data:
+    name: agentos-ollama-data
