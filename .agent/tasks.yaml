@@ -129,3 +129,45 @@
   next_steps:
     - "Implement FastAPI backend endpoints matching WorkflowApiAdapter interface."
     - "Connect Celery execution queue."
+
+- task_id: WF-003
+  title: "End-to-End Product Integration: Frontend HTTP/WS Adapter, Live Local Model Execution & Node Refinements"
+  description: "Connect the React Flow frontend to the live FastAPI backend via HttpApiAdapter and WebSockets, wire live local Ollama model execution (llama3:latest 8B), refine n8n-style parameter forms, and fix node hover bridge."
+  goal: "Provide a working end-to-end product where the user can design workflows, select real local models, run executions with live WebSocket streaming, and store state in PostgreSQL/SQLite."
+  scope:
+    - frontend/src/api/*
+    - frontend/src/stores/*
+    - frontend/src/components/views/AgentsView.tsx
+    - frontend/src/components/panels/NodeConfigPanel.tsx
+    - frontend/src/nodes/base/BaseNode.tsx
+    - backend/app/engine/handlers/agent.py
+    - backend/app/main.py
+  constraints:
+    - Clean-room architectural design without proprietary n8n code.
+    - Zero breaking changes to existing visual styles.
+    - Full fallback resilience when local model/Docker is offline.
+  acceptance_criteria:
+    - HttpApiAdapter implements all WorkflowApiAdapter methods with automatic fallback.
+    - Live WebSocket event stream pushes logs and node states to canvas in real time.
+    - Local Ollama server detected and llama3:latest model executed end-to-end.
+    - Node hover toolbar does not disappear when moving towards actions.
+    - Frontend build passes with 0 errors.
+    - Backend test suite passes all 4 tests including live model synthesis.
+  risk_level: medium
+  created_at: 2026-11-15T19:50:00Z
+  started_at: 2026-11-15T19:55:00Z
+  completed_at: 2026-11-15T20:25:00Z
+  agent: "Antigravity Assistant"
+  model: "Gemini 3.8 Flash (High)"
+  prompt_version: "2.0"
+  base_commit: "9998bf3"
+  branch: "agent/end-to-end-product-and-model-integration"
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  summary: "Completed live end-to-end product wiring: HttpApiAdapter connects frontend to backend, WebSocket event stream broadcasts live logs, Ollama llama3:latest model runs live neural inference, and node hover bridges are stabilized."

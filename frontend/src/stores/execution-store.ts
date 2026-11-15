@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import type { Execution, ExecutionLog, ExecutionStatus } from '@/types/workflow';
 import { getApiAdapter } from '@/api';
 
+const WS_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
+  .replace(/^http/, 'ws');
+
 interface ExecutionState {
   // Current execution
   currentExecution: Execution | null;
@@ -12,8 +15,9 @@ interface ExecutionState {
   executions: Execution[];
   isLoadingExecutions: boolean;
 
-  // Polling
+  // Real-time connections
   pollingInterval: ReturnType<typeof setInterval> | null;
+  activeWebSocket: WebSocket | null;
 
   // Actions
   executeWorkflow: (workflowId: string) => Promise<void>;
@@ -23,6 +27,8 @@ interface ExecutionState {
   getNodeStatus: (nodeId: string) => ExecutionStatus;
   startPolling: (executionId: string) => void;
   stopPolling: () => void;
+  connectWebSocket: (executionId: string) => void;
+  disconnectWebSocket: () => void;
   clearExecution: () => void;
 }
 
@@ -33,16 +39,101 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
   executions: [],
   isLoadingExecutions: false,
   pollingInterval: null,
+  activeWebSocket: null,
 
   executeWorkflow: async (workflowId: string) => {
     try {
-      set({ isExecuting: true });
+      set({ isExecuting: true, executionLogs: [] });
       const execution = await getApiAdapter().executeWorkflow(workflowId);
       set({ currentExecution: execution });
+      
+      // Connect live WebSocket event stream with polling fallback
+      get().connectWebSocket(execution.id);
       get().startPolling(execution.id);
     } catch (e) {
       console.error('Execution failed:', e);
       set({ isExecuting: false });
+    }
+  },
+
+  connectWebSocket: (executionId: string) => {
+    get().disconnectWebSocket();
+
+    try {
+      const wsUrl = `${WS_BASE}/ws/executions/${executionId}`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload && payload.message) {
+            const newLog: ExecutionLog = {
+              id: `log-${payload.seq || Date.now()}`,
+              timestamp: payload.timestamp || new Date().toISOString(),
+              level: payload.level || 'info',
+              message: payload.message,
+              nodeId: payload.nodeId,
+            };
+
+            set((state) => {
+              const logs = [...state.executionLogs, newLog];
+              let updatedExecution = state.currentExecution;
+
+              if (updatedExecution && payload.nodeId) {
+                const nodeResults = { ...updatedExecution.nodeResults };
+                let nodeStatus: ExecutionStatus = nodeResults[payload.nodeId]?.status || 'idle';
+
+                if (payload.message.includes('Starting node')) {
+                  nodeStatus = 'running';
+                } else if (payload.message.includes('Completed node')) {
+                  nodeStatus = 'completed';
+                } else if (payload.message.includes('Failed node')) {
+                  nodeStatus = 'failed';
+                }
+
+                nodeResults[payload.nodeId] = {
+                  ...(nodeResults[payload.nodeId] || {}),
+                  status: nodeStatus,
+                };
+                updatedExecution = { ...updatedExecution, nodeResults };
+              }
+
+              return { executionLogs: logs, currentExecution: updatedExecution };
+            });
+
+            if (payload.message.includes('Workflow completed') || payload.message.includes('Workflow failed')) {
+              set({ isExecuting: false });
+              get().stopPolling();
+            }
+          }
+        } catch {
+          // Non-JSON message (e.g. pong)
+        }
+      };
+
+      ws.onerror = () => {
+        // Gracefully keep polling active if WebSocket is blocked
+      };
+
+      ws.onclose = () => {
+        set({ activeWebSocket: null });
+      };
+
+      set({ activeWebSocket: ws });
+    } catch (e) {
+      console.warn('Could not establish WebSocket connection, continuing with HTTP polling:', e);
+    }
+  },
+
+  disconnectWebSocket: () => {
+    const { activeWebSocket } = get();
+    if (activeWebSocket) {
+      try {
+        activeWebSocket.close();
+      } catch {
+        // Ignore close errors
+      }
+      set({ activeWebSocket: null });
     }
   },
 
@@ -52,8 +143,8 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
     try {
       await getApiAdapter().stopExecution(currentExecution.id);
       get().stopPolling();
+      get().disconnectWebSocket();
       set({ isExecuting: false });
-      // Refresh execution state
       const updated = await getApiAdapter().getExecution(currentExecution.id);
       set({ currentExecution: updated });
     } catch (e) {
@@ -93,7 +184,11 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
       try {
         const execution = await getApiAdapter().getExecution(executionId);
         const logs = await getApiAdapter().getExecutionLogs(executionId);
-        set({ currentExecution: execution, executionLogs: logs });
+        set((state) => ({
+          currentExecution: execution,
+          // Merge logs avoiding duplicates
+          executionLogs: logs.length > state.executionLogs.length ? logs : state.executionLogs,
+        }));
 
         if (
           execution.status === 'completed' ||
@@ -101,13 +196,15 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
           execution.status === 'cancelled'
         ) {
           get().stopPolling();
+          get().disconnectWebSocket();
           set({ isExecuting: false });
         }
       } catch {
         get().stopPolling();
+        get().disconnectWebSocket();
         set({ isExecuting: false });
       }
-    }, 500);
+    }, 600);
     set({ pollingInterval: interval });
   },
 
@@ -121,6 +218,7 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
 
   clearExecution: () => {
     get().stopPolling();
+    get().disconnectWebSocket();
     set({
       currentExecution: null,
       isExecuting: false,
@@ -128,4 +226,3 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
     });
   },
 }));
-

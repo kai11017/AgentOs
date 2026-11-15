@@ -94,3 +94,4 @@ class DockerService:
             raise RuntimeError(f"Failed to stop container '{container_name}': {e}")
 
 docker_service = DockerService()
+

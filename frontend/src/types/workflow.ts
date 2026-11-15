@@ -76,4 +76,5 @@ export interface Workflow {
   updatedAt: string;
   settings?: WorkflowSettings;
   tags?: string[];
+  isActive?: boolean;
 }

@@ -44,7 +44,7 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
     <div
       onClick={() => selectNode(id)}
       className={cn(
-        'group relative min-w-[210px] max-w-[250px] bg-white rounded-2xl border transition-all duration-200 select-none cursor-pointer p-3',
+        'group relative min-w-[210px] max-w-[250px] bg-white rounded-2xl border transition-all duration-200 select-none cursor-pointer p-3 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:content-[""]',
         selected
           ? 'border-[#15803d] ring-2 ring-[#15803d] shadow-[0_0_0_3px_rgba(21,128,61,0.18),0_8px_24px_rgba(21,128,61,0.12)]'
           : 'border-[#ded8cc] shadow-[0_2px_8px_rgba(15,35,25,0.04),0_1px_3px_rgba(15,35,25,0.03)] hover:border-[#15803d]/50 hover:shadow-[0_8px_24px_rgba(15,35,25,0.08),0_2px_6px_rgba(15,35,25,0.04)]',
@@ -121,7 +121,7 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
       {/* ── Quick Action Floating Controls with Hover Bridge ────────────────── */}
       <div
         className={cn(
-          'nodrag absolute -top-9 right-2 items-center gap-1 bg-white border border-[#ded8cc] rounded-xl p-1 shadow-md z-30 transition-all after:absolute after:-bottom-3 after:left-0 after:right-0 after:h-4 after:content-[""]',
+          'nodrag absolute -top-8 right-2 items-center gap-1 bg-white border border-[#ded8cc] rounded-xl p-1 shadow-md z-30 transition-all after:absolute after:-bottom-4 after:left-0 after:right-0 after:h-5 after:content-[""]',
           selected ? 'flex' : 'hidden group-hover:flex'
         )}
       >

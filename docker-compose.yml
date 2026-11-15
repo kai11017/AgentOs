@@ -42,3 +42,4 @@ volumes:
     name: agentos-postgres-data
   agentos-ollama-data:
     name: agentos-ollama-data
+

@@ -107,7 +107,7 @@ export const NodeConfigPanel: React.FC = () => {
       } else if (nodeType.includes('agent')) {
         // AI Agent profile
         initialTailoredConfig = {
-          model: 'GPT-4o mini',
+          model: 'llama3:latest',
           instructions:
             'Summarize the incoming email, research the topic on the web, and return key insights with sources.',
           tools: ['Web search', 'Memory', 'JS skill'],
@@ -538,15 +538,16 @@ export const NodeConfigPanel: React.FC = () => {
                       Model Selection
                     </label>
                     <select
-                      value={config.model || 'GPT-4o mini'}
+                      value={config.model || 'llama3:latest'}
                       onChange={(e) => handleFieldChange('model', e.target.value)}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] font-semibold"
                     >
-                      <option value="GPT-4o mini">GPT-4o mini (Fast & Efficient)</option>
-                      <option value="GPT-4o">GPT-4o (Omni Flagship)</option>
-                      <option value="Claude 3.7 Sonnet">Claude 3.7 Sonnet (Anthropic)</option>
-                      <option value="Llama 3.2 (Local Ollama)">Llama 3.2 (Local Ollama)</option>
-                      <option value="Qwen 2.5 Coder (7B)">Qwen 2.5 Coder (Local Ollama)</option>
+                      <option value="llama3:latest">llama3:latest (Live Local Ollama - 4.7 GB)</option>
+                      <option value="llama3.2:3b">llama3.2:3b (Local Ollama - 2.0 GB)</option>
+                      <option value="qwen2.5-coder:7b">qwen2.5-coder:7b (Local Ollama - 4.7 GB)</option>
+                      <option value="deepseek-r1:8b">deepseek-r1:8b (Local Ollama - 4.9 GB)</option>
+                      <option value="gpt-4o-mini">GPT-4o mini (OpenAI Cloud)</option>
+                      <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic Cloud)</option>
                     </select>
                   </div>
 

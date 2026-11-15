@@ -47,7 +47,7 @@ async def seed_initial_demo_workflow():
                     position_y=260.0,
                     config={
                         "name": "Research",
-                        "model": "llama3.2:3b",
+                        "model": "llama3:latest",
                         "instructions": "Summarize the incoming email, research the topic on the web, and return key insights with sources.",
                         "tools": ["Web search", "Memory", "JS skill"],
                     },

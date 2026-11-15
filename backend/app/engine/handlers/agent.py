@@ -36,13 +36,26 @@ class AgentNodeHandler(BaseNodeHandler):
         # Check if Ollama is accessible at 127.0.0.1:11434
         if is_ollama_reachable(settings.OLLAMA_BASE_URL, timeout=0.15):
             ollama_url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+            tags_url = f"{settings.OLLAMA_BASE_URL}/api/tags"
             try:
-                timeout = httpx.Timeout(connect=1.0, read=30.0, write=5.0, pool=1.0)
+                timeout = httpx.Timeout(connect=1.0, read=45.0, write=5.0, pool=1.0)
                 async with httpx.AsyncClient(timeout=timeout) as client:
+                    # Dynamically inspect installed models to use the best active model
+                    target_model = model_name
+                    try:
+                        tags_res = await client.get(tags_url, timeout=2.0)
+                        if tags_res.status_code == 200:
+                            installed_models = [m.get("name") for m in tags_res.json().get("models", [])]
+                            if target_model not in installed_models and installed_models:
+                                target_model = installed_models[0]
+                                logger.info(f"Requested model '{model_name}' not found. Using installed model '{target_model}'.")
+                    except Exception:
+                        pass
+
                     res = await client.post(
                         ollama_url,
                         json={
-                            "model": model_name,
+                            "model": target_model,
                             "prompt": prompt,
                             "stream": False,
                         }
@@ -52,7 +65,7 @@ class AgentNodeHandler(BaseNodeHandler):
                         response_text = data.get("response", "")
                         return {
                             "status": "completed",
-                            "model": model_name,
+                            "model": target_model,
                             "summary": response_text,
                             "toolsUsed": ["Web search", "Memory", "JS skill"],
                             "tokens": data.get("eval_count", 240),
