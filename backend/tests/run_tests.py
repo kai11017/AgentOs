@@ -115,10 +115,61 @@ async def main():
     tool_names = [t["name"] for t in available_tools]
     assert "web_search" in tool_names
     assert "calculator" in tool_names
+    assert "memory" in tool_names
     print("[PASS] MCP REST API")
 
+    print("\n--- 8. Testing Context Window Manager & Memory Tool ---")
+    from backend.app.engine.tools.memory import global_memory_tool
+    from backend.app.engine.context.manager import ContextWindowManager
+
+    # 8a. Memory Tool set / get / list
+    set_res = await global_memory_tool.execute(action="set", key="project_lead", value="Alice")
+    assert set_res["status"] == "success"
+    get_res = await global_memory_tool.execute(action="get", key="project_lead")
+    assert get_res["status"] == "success"
+    assert get_res["value"] == "Alice"
+    list_res = await global_memory_tool.execute(action="list")
+    assert "project_lead" in list_res["keys"]
+    print("  [PASS] MemoryTool key-value persistence")
+
+    # 8b. Context Window Truncation for massive tool payloads
+    huge_payload = "A" * 12000
+    compacted = ContextWindowManager.compact_tool_output(huge_payload, max_tokens=200)
+    assert len(compacted) < 1500
+    assert "Truncated" in compacted
+    print("  [PASS] Tool output truncation")
+
+    # 8c. Context Window Compaction for Gemini multi-turn conversation
+    turns = [
+        {"role": "user", "parts": [{"text": "Task: research AI trends"}]},
+        {"role": "model", "parts": [{"functionCall": {"name": "web_search", "args": {"q": "AI 2026"}}}]},
+        {"role": "user", "parts": [{"functionResponse": {"name": "web_search", "response": {"output": "Extracted 50 articles " * 50}}}]},
+        {"role": "model", "parts": [{"functionCall": {"name": "calculator", "args": {"expr": "50 * 2"}}}]},
+        {"role": "user", "parts": [{"functionResponse": {"name": "calculator", "response": {"output": "100"}}}]},
+        {"role": "model", "parts": [{"text": "Recent active reasoning step"}]},
+    ]
+    compacted_turns = ContextWindowManager.compact_gemini_turns(turns, max_tokens=300)
+    assert len(compacted_turns) < len(turns)
+    assert "Prior Context Checkpoint" in compacted_turns[1]["parts"][0]["text"]
+    assert compacted_turns[0]["parts"][0]["text"] == "Task: research AI trends"
+    print("  [PASS] Gemini multi-turn Anchor + Tail compaction")
+
+    # 8d. Upstream DAG Context Distillation
+    upstream_ctx = {
+        "$json": {"summary": "Customer requested refund for order #1234"},
+        "$nodes": {
+            "trigger-1": {"body": "Email received from client"},
+            "agent-1": {"summary": "Validated order status: Eligible for 100% refund"},
+        }
+    }
+    distilled = ContextWindowManager.distill_upstream_context(upstream_ctx, max_tokens=500)
+    assert "Direct Input Data" in distilled
+    assert "Workflow Memory (Past Nodes)" in distilled
+    assert "refund" in distilled.lower()
+    print("  [PASS] Upstream DAG Context Distillation")
+
     print("\n==========================================")
-    print("ALL 7 END-TO-END PRODUCT SUITE TESTS PASSED!")
+    print("ALL 8 END-TO-END PRODUCT SUITE TESTS PASSED!")
     print("==========================================")
 
 if __name__ == "__main__":

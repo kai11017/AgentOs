@@ -9,6 +9,7 @@ from backend.app.core.config import settings
 from backend.app.engine.handlers.base import BaseNodeHandler
 from backend.app.engine.expressions import ExpressionEvaluator
 from backend.app.engine.tools.registry import global_tool_registry
+from backend.app.engine.context.manager import ContextWindowManager
 
 logger = logging.getLogger("agentos.handlers.agent")
 
@@ -46,12 +47,8 @@ class AgentNodeHandler(BaseNodeHandler):
                 except Exception:
                     pass
 
-        # Upstream context from previous nodes
-        input_data = context.get("$json", {})
-        if isinstance(input_data, dict):
-            input_content = input_data.get("body") or input_data.get("summary") or json.dumps(input_data, indent=2)
-        else:
-            input_content = str(input_data)
+        # Upstream context distilled via ContextWindowManager
+        input_content = ContextWindowManager.distill_upstream_context(context, max_tokens=1400)
 
         system_instruction = (
             f"You are an Autonomous AI Agent in the AgentOS workflow automation engine.\n"
@@ -61,9 +58,10 @@ class AgentNodeHandler(BaseNodeHandler):
             f"- web_search: search DuckDuckGo / web for real-time information and documentation\n"
             f"- calculator: perform accurate mathematical & statistical operations\n"
             f"- fetch_url: retrieve and read content from safe public URLs\n"
-            f"- code_runner: run short Python expressions to transform, compute, or parse data\n\n"
+            f"- code_runner: run short Python expressions to transform, compute, or parse data\n"
+            f"- memory: store and recall key facts across workflow executions (actions: get, set, list)\n\n"
             f"Operating Guidelines:\n"
-            f"1. When you need facts, calculations, or external data, invoke the matching tool.\n"
+            f"1. When you need facts, calculations, external data, or recall, invoke the matching tool.\n"
             f"2. After receiving tool results, analyze them and decide whether additional tools are needed.\n"
             f"3. When finished, provide a clear, concise, well-structured final synthesis with key takeaways."
         )
@@ -200,7 +198,8 @@ class AgentNodeHandler(BaseNodeHandler):
                                 if isinstance(r, dict) and "url" in r:
                                     sources_found.append(r["url"])
 
-                        result_snippet = str(result)[:180].replace("\n", " ")
+                        compact_result = ContextWindowManager.compact_tool_output(result, max_tokens=ContextWindowManager.MAX_TOOL_RESULT_TOKENS)
+                        result_snippet = str(compact_result)[:180].replace("\n", " ")
                         await log(f"[AI Agent] 📥 Tool Result ({fn_name}): {result_snippet}...", level="info")
 
                         # Append model turn with exact parts (retaining thoughtSignature)
@@ -214,10 +213,12 @@ class AgentNodeHandler(BaseNodeHandler):
                             "parts": [{
                                 "functionResponse": {
                                     "name": fn_name,
-                                    "response": {"output": result},
+                                    "response": {"output": compact_result},
                                 }
                             }]
                         })
+                        # Shrink & compact context turns if token budget exceeded
+                        contents = ContextWindowManager.compact_gemini_turns(contents, max_tokens=ContextWindowManager.DEFAULT_MAX_CONTEXT_TOKENS)
                         continue
 
                     # If no function call, we have reached the final answer
@@ -308,9 +309,12 @@ class AgentNodeHandler(BaseNodeHandler):
                             else:
                                 res_obj = {"error": f"Tool '{fn_name}' not found."}
 
-                            res_str = json.dumps(res_obj)
+                            compact_res = ContextWindowManager.compact_tool_output(res_obj, max_tokens=ContextWindowManager.MAX_TOOL_RESULT_TOKENS)
+                            res_str = json.dumps(compact_res)
                             await log(f"[AI Agent] 📥 Tool Result ({fn_name}): {res_str[:120]}...", level="info")
                             messages.append({"role": "tool", "content": res_str})
+                        # Shrink & compact context messages if token budget exceeded
+                        messages = ContextWindowManager.compact_ollama_messages(messages, max_tokens=ContextWindowManager.DEFAULT_MAX_CONTEXT_TOKENS)
                         continue
 
                     # Final response
