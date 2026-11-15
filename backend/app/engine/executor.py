@@ -12,6 +12,7 @@ from backend.app.engine.handlers.agent import AgentNodeHandler
 from backend.app.engine.handlers.http import HTTPNodeHandler
 from backend.app.engine.handlers.database import DatabaseNodeHandler
 from backend.app.engine.handlers.output import OutputNodeHandler
+from backend.app.engine.handlers.approval import ApprovalNodeHandler
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 
 # Handler Dispatch Registry
@@ -25,6 +26,9 @@ HANDLERS = {
     "http-request": HTTPNodeHandler(),
     "database": DatabaseNodeHandler(),
     "output": OutputNodeHandler(),
+    "approval": ApprovalNodeHandler(),
+    "human-approval": ApprovalNodeHandler(),
+    "manual-review": ApprovalNodeHandler(),
 }
 
 class WorkflowExecutor:
@@ -108,6 +112,7 @@ class WorkflowExecutor:
             "$json": merged_input,
             "$prev": prev_output,
             "$nodes": self.node_outputs,
+            "execution_id": self.execution_id,
             "emit_log": lambda msg, level="info": self.emit_log(msg, level=level, node_id=node_id),
         }
 

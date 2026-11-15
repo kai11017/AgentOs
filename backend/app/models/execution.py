@@ -10,8 +10,8 @@ class ExecutionModel(Base):
     workflow_id = Column(String, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(String, default="pending", index=True)  # pending, running, completed, failed, cancelled
     duration_ms = Column(Integer, default=0)
-    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    completed_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     node_results = Column(JSON, default=dict)  # { [nodeId]: { status, output, duration_ms, error } }
 
     workflow = relationship("WorkflowModel", back_populates="executions")
@@ -26,7 +26,7 @@ class ExecutionLogModel(Base):
     node_id = Column(String, nullable=True, index=True)
     level = Column(String, default="info")  # info, warn, error
     message = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     payload = Column(JSON, nullable=True)
 
     execution = relationship("ExecutionModel", back_populates="logs")

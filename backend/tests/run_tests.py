@@ -1,6 +1,9 @@
 import asyncio
 import os
 import sys
+import uuid
+import httpx
+from httpx import AsyncClient, ASGITransport
 
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.abspath("."))
@@ -12,10 +15,14 @@ from backend.app.engine.tools.registry import global_tool_registry
 from backend.app.engine.handlers.agent import AgentNodeHandler
 from backend.app.engine.mcp.client import MCPToolWrapper
 from backend.app.engine.mcp.manager import global_mcp_manager
-from fastapi.testclient import TestClient
-from backend.app.main import app
+from backend.app.main import app, seed_initial_demo_workflow
+from backend.app.core.database import init_db
 
 async def main():
+    # Ensure database schema and demo seed are loaded
+    await init_db()
+    await seed_initial_demo_workflow()
+
     print("--- 1. Testing Calculator ---")
     calc = CalculatorTool()
     res_calc = await calc.execute(expression="sqrt(144) * 5 + 10")
@@ -85,7 +92,6 @@ async def main():
     assert "memory" in server_names
     assert "github" in server_names
 
-    # Test MCP tool adapter
     dummy_tool_meta = {
         "name": "list_directory",
         "description": "Lists contents of a directory",
@@ -102,27 +108,10 @@ async def main():
     assert gemini_decl["name"] == "mcp_testserver_list_directory"
     print("[PASS] MCP Manager & Wrapper")
 
-    print("\n--- 7. Testing MCP REST API ---")
-    client = TestClient(app)
-    res_api = client.get("/api/v1/mcp/servers")
-    assert res_api.status_code == 200
-    assert "servers" in res_api.json()
-
-    res_tools = client.get("/api/v1/mcp/tools")
-    assert res_tools.status_code == 200
-    available_tools = res_tools.json().get("tools", [])
-    assert len(available_tools) >= 4
-    tool_names = [t["name"] for t in available_tools]
-    assert "web_search" in tool_names
-    assert "calculator" in tool_names
-    assert "memory" in tool_names
-    print("[PASS] MCP REST API")
-
-    print("\n--- 8. Testing Context Window Manager & Memory Tool ---")
+    print("\n--- 7. Testing Context Window Manager & Memory Tool ---")
     from backend.app.engine.tools.memory import global_memory_tool
     from backend.app.engine.context.manager import ContextWindowManager
 
-    # 8a. Memory Tool set / get / list
     set_res = await global_memory_tool.execute(action="set", key="project_lead", value="Alice")
     assert set_res["status"] == "success"
     get_res = await global_memory_tool.execute(action="get", key="project_lead")
@@ -132,14 +121,12 @@ async def main():
     assert "project_lead" in list_res["keys"]
     print("  [PASS] MemoryTool key-value persistence")
 
-    # 8b. Context Window Truncation for massive tool payloads
     huge_payload = "A" * 12000
     compacted = ContextWindowManager.compact_tool_output(huge_payload, max_tokens=200)
     assert len(compacted) < 1500
     assert "Truncated" in compacted
     print("  [PASS] Tool output truncation")
 
-    # 8c. Context Window Compaction for Gemini multi-turn conversation
     turns = [
         {"role": "user", "parts": [{"text": "Task: research AI trends"}]},
         {"role": "model", "parts": [{"functionCall": {"name": "web_search", "args": {"q": "AI 2026"}}}]},
@@ -154,7 +141,6 @@ async def main():
     assert compacted_turns[0]["parts"][0]["text"] == "Task: research AI trends"
     print("  [PASS] Gemini multi-turn Anchor + Tail compaction")
 
-    # 8d. Upstream DAG Context Distillation
     upstream_ctx = {
         "$json": {"summary": "Customer requested refund for order #1234"},
         "$nodes": {
@@ -168,8 +154,103 @@ async def main():
     assert "refund" in distilled.lower()
     print("  [PASS] Upstream DAG Context Distillation")
 
+    # Async API Client Testing on Same Loop
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        print("\n--- 8. Testing MCP REST API ---")
+        res_api = await client.get("/api/v1/mcp/servers")
+        assert res_api.status_code == 200
+        assert "servers" in res_api.json()
+
+        res_tools = await client.get("/api/v1/mcp/tools")
+        assert res_tools.status_code == 200
+        available_tools = res_tools.json().get("tools", [])
+        assert len(available_tools) >= 4
+        tool_names = [t["name"] for t in available_tools]
+        assert "web_search" in tool_names
+        assert "calculator" in tool_names
+        assert "memory" in tool_names
+        print("[PASS] MCP REST API")
+
+        print("\n--- 9. Testing Webhook Ingress Trigger ---")
+        res_wh_chal = await client.get("/api/v1/triggers/webhook/test-token?challenge=slack-verify-999")
+        assert res_wh_chal.status_code == 200
+        assert "slack-verify-999" in res_wh_chal.text
+        print("  [PASS] Webhook challenge verification")
+
+        res_wh_post = await client.post(
+            "/api/v1/triggers/webhook/demo-workflow-1",
+            json={"event": "github_push", "repo": "AgentOs", "author": "dev"},
+        )
+        assert res_wh_post.status_code == 200
+        wh_data = res_wh_post.json()
+        assert wh_data["success"] is True
+        assert "executionId" in wh_data
+        print("  [PASS] Webhook asynchronous execution trigger")
+
+        print("\n--- 10. Testing Human Approval Node & Resumption ---")
+        from backend.app.engine.handlers.approval import ApprovalNodeHandler
+        approval_handler = ApprovalNodeHandler()
+        approval_node = {
+            "id": "node-approval-test",
+            "data": {
+                "label": "Manager Sign-off",
+                "config": {"instructions": "Review invoice before sending payment", "timeoutSeconds": 10},
+            }
+        }
+        test_exec_id = f"test-exec-appr-{uuid.uuid4().hex[:6]}"
+        appr_context = {
+            "$json": {"invoice_total": 4500},
+            "execution_id": test_exec_id,
+        }
+
+        async def run_appr():
+            return await approval_handler.execute(approval_node, appr_context)
+
+        appr_task = asyncio.create_task(run_appr())
+        await asyncio.sleep(0.05)
+
+        res_appr_stat = await client.get(f"/api/v1/executions/{test_exec_id}/approval")
+        assert res_appr_stat.status_code == 200
+        assert res_appr_stat.json()["waiting"] is True
+
+        res_approve = await client.post(
+            f"/api/v1/executions/{test_exec_id}/approve",
+            json={"comment": "Approved by CFO"},
+        )
+        assert res_approve.status_code == 200
+        appr_result = await appr_task
+        assert appr_result["approved"] is True
+        assert appr_result["comment"] == "Approved by CFO"
+        print("  [PASS] Human Approval pause & operator resumption")
+
+        print("\n--- 11. Testing Cron & Interval Scheduler ---")
+        from backend.app.engine.scheduler.manager import global_scheduler_manager
+        global_scheduler_manager.start()
+        res_sched_sync = await client.post("/api/v1/schedules/sync")
+        assert res_sched_sync.status_code == 200
+        assert "syncedCount" in res_sched_sync.json()
+        res_sched_list = await client.get("/api/v1/schedules")
+        assert res_sched_list.status_code == 200
+        assert "jobs" in res_sched_list.json()
+        print("  [PASS] APScheduler background sync and job listing")
+
+        print("\n--- 12. Testing Workflow JSON Export & Import ---")
+        res_export = await client.get("/api/v1/workflows/demo-workflow-1/export")
+        assert res_export.status_code == 200
+        exported_data = res_export.json()
+        assert exported_data["format"] == "agentflow.workflow"
+        assert "workflow" in exported_data
+
+        res_import = await client.post("/api/v1/workflows/import", json=exported_data)
+        assert res_import.status_code == 200
+        imported_wf = res_import.json()
+        assert imported_wf["id"].startswith("wf-")
+        assert len(imported_wf["nodes"]) >= 1
+        print("  [PASS] Workflow .agentflow.json Export & Import")
+
     print("\n==========================================")
-    print("ALL 8 END-TO-END PRODUCT SUITE TESTS PASSED!")
+    print("ALL 12 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 import uuid
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -16,6 +17,7 @@ from backend.app.schemas.execution import (
     NodeExecutionResult,
 )
 from backend.app.engine.executor import WorkflowExecutor
+from backend.app.engine.handlers.approval import PENDING_APPROVAL_FUTURES, PENDING_APPROVAL_METADATA
 from backend.app.api.v1.websockets import broadcast_execution_event
 
 router = APIRouter(tags=["Executions"])
@@ -173,4 +175,52 @@ async def get_execution_logs(execution_id: str, db: AsyncSession = Depends(get_d
         )
         for log in logs
     ]
+
+# ─── Human in the Loop (Approval / Rejection) ────────────────────────────────
+
+class ApprovalDecisionRequest(BaseModel):
+    comment: Optional[str] = Field(None, description="Optional operator comment or feedback")
+    modifiedData: Optional[Dict[str, Any]] = Field(None, description="Optional modified data overriding upstream payload")
+
+class RejectionDecisionRequest(BaseModel):
+    reason: Optional[str] = Field(None, description="Reason for rejecting execution")
+
+@router.get("/executions/{execution_id}/approval")
+async def get_approval_status(execution_id: str):
+    """Returns whether this execution is currently paused waiting for human review."""
+    metadata = PENDING_APPROVAL_METADATA.get(execution_id)
+    if not metadata:
+        return {"waiting": False}
+    return {"waiting": True, "details": metadata}
+
+@router.post("/executions/{execution_id}/approve")
+async def approve_execution(execution_id: str, req: ApprovalDecisionRequest):
+    """Authorizes a paused execution, unblocking the Approval node to proceed."""
+    future = PENDING_APPROVAL_FUTURES.get(execution_id)
+    if not future or future.done():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution is not currently paused waiting for approval.",
+        )
+    future.set_result({
+        "approved": True,
+        "comment": req.comment or "",
+        "modifiedData": req.modifiedData,
+    })
+    return {"success": True, "message": "Execution authorized. Resuming workflow."}
+
+@router.post("/executions/{execution_id}/reject")
+async def reject_execution(execution_id: str, req: RejectionDecisionRequest):
+    """Rejects a paused execution, safely terminating downstream actions."""
+    future = PENDING_APPROVAL_FUTURES.get(execution_id)
+    if not future or future.done():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution is not currently paused waiting for approval.",
+        )
+    future.set_result({
+        "approved": False,
+        "reason": req.reason or "Rejected by operator.",
+    })
+    return {"success": True, "message": "Execution rejected and halted."}
 

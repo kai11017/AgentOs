@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useExecutionStore } from '@/stores/execution-store';
 import { useWorkflowStore } from '@/stores/workflow-store';
 import { useUIStore } from '@/stores/ui-store';
 import { formatDuration, formatDate, cn } from '@/lib/utils';
+import { httpApiAdapter } from '@/api/http-adapter';
 import {
   Play,
   Square,
@@ -16,6 +17,7 @@ import {
   FileJson,
   ChevronDown,
   ChevronRight,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const ExecutionPanel: React.FC = () => {
@@ -33,6 +35,59 @@ export const ExecutionPanel: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'logs' | 'nodes' | 'history'>('logs');
   const [selectedNodeOutput, setSelectedNodeOutput] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<any | null>(null);
+  const [isActioningApproval, setIsActioningApproval] = useState(false);
+
+  // Poll for human approval request while executing
+  useEffect(() => {
+    if (!currentExecution?.id || currentExecution.status !== 'running') {
+      setPendingApproval(null);
+      return;
+    }
+
+    const checkApproval = async () => {
+      try {
+        const res = await httpApiAdapter.getApprovalStatus(currentExecution.id);
+        if (res.waiting && res.details) {
+          setPendingApproval(res.details);
+        } else {
+          setPendingApproval(null);
+        }
+      } catch {
+        setPendingApproval(null);
+      }
+    };
+
+    const interval = setInterval(checkApproval, 1500);
+    checkApproval();
+    return () => clearInterval(interval);
+  }, [currentExecution?.id, currentExecution?.status]);
+
+  const handleApprove = async () => {
+    if (!currentExecution?.id) return;
+    setIsActioningApproval(true);
+    try {
+      await httpApiAdapter.approveExecution(currentExecution.id, 'Approved via Execution Monitor');
+      setPendingApproval(null);
+    } catch (err: any) {
+      alert(`Approval error: ${err.message}`);
+    } finally {
+      setIsActioningApproval(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!currentExecution?.id) return;
+    setIsActioningApproval(true);
+    try {
+      await httpApiAdapter.rejectExecution(currentExecution.id, 'Rejected by operator');
+      setPendingApproval(null);
+    } catch (err: any) {
+      alert(`Rejection error: ${err.message}`);
+    } finally {
+      setIsActioningApproval(false);
+    }
+  };
 
   if (!isExecutionPanelOpen) return null;
 
@@ -151,6 +206,48 @@ export const ExecutionPanel: React.FC = () => {
 
       {/* Tab Body */}
       <div className="flex-1 overflow-y-auto p-3 font-mono text-xs">
+        {/* Human in the loop Approval Banner */}
+        {pendingApproval && (
+          <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200 font-sans shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                    Operator Authorization Required
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-mono">
+                    {pendingApproval.nodeLabel || pendingApproval.nodeId}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5 truncate">
+                  {pendingApproval.instructions}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={isActioningApproval}
+                onClick={handleApprove}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <CheckCircle className="w-3.5 h-3.5" /> Approve & Resume
+              </button>
+              <button
+                type="button"
+                disabled={isActioningApproval}
+                onClick={handleReject}
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <X className="w-3.5 h-3.5" /> Reject
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Logs Tab */}
         {activeTab === 'logs' && (
           <div className="space-y-1">

@@ -12,8 +12,8 @@ class WorkflowModel(Base):
     is_active = Column(Boolean, default=True)
     version = Column(Integer, default=1)
     tags = Column(JSON, default=list)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relational children with cascade delete
     nodes = relationship("WorkflowNodeModel", back_populates="workflow", cascade="all, delete-orphan", lazy="selectin")

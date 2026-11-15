@@ -8,6 +8,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import init_db, AsyncSessionLocal
 from backend.app.api.v1.router import api_router
 from backend.app.models.workflow import WorkflowModel, WorkflowNodeModel, WorkflowEdgeModel
+from backend.app.engine.scheduler.manager import global_scheduler_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("agentos.main")
@@ -101,9 +102,15 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize DB tables & seed demo workflow
     await init_db()
     await seed_initial_demo_workflow()
+    global_scheduler_manager.start()
+    try:
+        await global_scheduler_manager.sync_all_workflows()
+    except Exception as e:
+        logger.warning(f"Initial schedule sync warning: {e}")
     logger.info("AgentOS Backend started successfully.")
     yield
     # Shutdown
+    global_scheduler_manager.shutdown()
     logger.info("AgentOS Backend shutting down.")
 
 app = FastAPI(

@@ -395,8 +395,53 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
         { name: 'calculator', description: 'Safe math evaluator', isMcp: false },
         { name: 'fetch_url', description: 'SSRF-safe web extractor', isMcp: false },
         { name: 'code_runner', description: 'Sandboxed Python runner', isMcp: false },
+        { name: 'memory', description: 'Persistent key-value memory', isMcp: false },
       ];
     }
+  }
+
+  // ─── Human in the Loop (Approval / Rejection) ────────────────────────────────
+
+  async getApprovalStatus(executionId: string): Promise<{ waiting: boolean; details?: any }> {
+    return this.request(`/executions/${executionId}/approval`);
+  }
+
+  async approveExecution(executionId: string, comment: string = '', modifiedData?: any): Promise<any> {
+    return this.request(`/executions/${executionId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ comment, modifiedData }),
+    });
+  }
+
+  async rejectExecution(executionId: string, reason: string = 'Rejected by user'): Promise<any> {
+    return this.request(`/executions/${executionId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  // ─── Workflow JSON Export & Import ──────────────────────────────────────────
+
+  async exportWorkflowJson(workflowId: string): Promise<any> {
+    return this.request(`/workflows/${workflowId}/export`);
+  }
+
+  async importWorkflowJson(payload: any): Promise<Workflow> {
+    const imported = await this.request<any>('/workflows/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return this.getWorkflow(imported.id);
+  }
+
+  // ─── Cron & Schedule Triggers ───────────────────────────────────────────────
+
+  async listSchedules(): Promise<{ jobs: any[] }> {
+    return this.request('/schedules');
+  }
+
+  async syncSchedules(): Promise<any> {
+    return this.request('/schedules/sync', { method: 'POST' });
   }
 }
 
