@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@/stores/ui-store';
-import { Search, Plus, Cpu, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { httpApiAdapter, type ModelInfo } from '@/api/http-adapter';
+import { Search, Plus, Cpu, Download, RefreshCw, CheckCircle2, Server, Power, Wrench } from 'lucide-react';
+import { httpApiAdapter, type ModelInfo, type McpServerInfo } from '@/api/http-adapter';
 
 interface AgentCardItem {
   id: string;
@@ -10,9 +10,11 @@ interface AgentCardItem {
   title: string;
   provider: string;
   description: string;
-  category: 'Local' | 'API' | 'Tools' | 'Skills';
+  category: 'Local' | 'API' | 'Tools' | 'Skills' | 'MCP';
   tag: string;
   connected?: boolean;
+  mcpName?: string;
+  toolCount?: number;
 }
 
 const STATIC_AGENTS: AgentCardItem[] = [
@@ -78,25 +80,44 @@ export const AgentsView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [localModels, setLocalModels] = useState<ModelInfo[]>([]);
+  const [mcpServers, setMcpServers] = useState<McpServerInfo[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [pullingModel, setPullingModel] = useState<string | null>(null);
   const [pullStatusMsg, setPullStatusMsg] = useState<string | null>(null);
 
-  const filters = ['All', 'Local', 'API', 'Tools', 'Skills'];
+  const filters = ['All', 'Local', 'API', 'Tools', 'Skills', 'MCP'];
 
   const fetchModels = async () => {
     setIsLoadingModels(true);
     try {
-      const models = await httpApiAdapter.listModels();
+      const [models, mcps] = await Promise.all([
+        httpApiAdapter.listModels(),
+        httpApiAdapter.listMcpServers(),
+      ]);
       setLocalModels(models);
+      setMcpServers(mcps);
     } catch {
       // Fallback
       setLocalModels([
         { name: 'llama3:latest', size: '4.7 GB', status: 'ready', isLocal: true, provider: 'Ollama (Local)' },
-        { name: 'qwen2.5-coder:7b', size: '4.7 GB', status: 'ready', isLocal: true, provider: 'Ollama' },
+        { name: 'qwen3.5:4b', size: '3.3 GB', status: 'ready', isLocal: true, provider: 'Ollama (Local)' },
       ]);
     } finally {
       setIsLoadingModels(false);
+    }
+  };
+
+  const handleToggleMcp = async (serverName: string, isCurrentlyConnected: boolean) => {
+    try {
+      if (isCurrentlyConnected) {
+        await httpApiAdapter.disconnectMcpServer(serverName);
+      } else {
+        await httpApiAdapter.connectMcpServer(serverName);
+      }
+      const updated = await httpApiAdapter.listMcpServers();
+      setMcpServers(updated);
+    } catch (e: any) {
+      alert(`MCP operation: ${e.message || 'Check local command execution'}`);
     }
   };
 
@@ -135,7 +156,21 @@ export const AgentsView: React.FC = () => {
       connected: true,
     }));
 
-  const allItems = [...dynamicLocalCards, ...STATIC_AGENTS];
+  const dynamicMcpCards: AgentCardItem[] = mcpServers.map((s) => ({
+    id: `mcp-${s.name}`,
+    initial: 'M',
+    initialColor: { bg: '#f3e8ff', text: '#7c3aed' },
+    title: s.label,
+    provider: `MCP Protocol • ${s.toolCount} tools`,
+    description: s.description,
+    category: 'MCP',
+    tag: 'MCP Server',
+    connected: s.status === 'connected',
+    mcpName: s.name,
+    toolCount: s.toolCount,
+  }));
+
+  const allItems = [...dynamicLocalCards, ...dynamicMcpCards, ...STATIC_AGENTS];
 
   const filtered = allItems.filter((item) => {
     const matchesFilter = selectedFilter === 'All' || item.category === selectedFilter;
@@ -303,10 +338,26 @@ export const AgentsView: React.FC = () => {
                 >
                   {item.tag}
                 </span>
-                <span className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-xl bg-[#dcfce7] border border-[#86efac]/80 text-[#15803d] shadow-2xs">
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>Ready</span>
-                </span>
+
+                {item.category === 'MCP' && item.mcpName ? (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleMcp(item.mcpName!, !!item.connected)}
+                    className={`inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                      item.connected
+                        ? 'bg-[#dcfce7] border-[#86efac] text-[#15803d] hover:bg-[#bbf7d0]'
+                        : 'bg-[#f3e8ff] border-[#d8b4fe] text-[#7c3aed] hover:bg-[#e9d5ff]'
+                    }`}
+                  >
+                    <Power className="w-3 h-3" />
+                    <span>{item.connected ? 'Connected' : 'Connect'}</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-xl bg-[#dcfce7] border border-[#86efac]/80 text-[#15803d] shadow-2xs">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Ready</span>
+                  </span>
+                )}
               </div>
             </div>
           ))}

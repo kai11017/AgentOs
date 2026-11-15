@@ -16,6 +16,11 @@ import {
   Zap,
   GitBranch,
   Terminal,
+  Wrench,
+  Sparkles,
+  Globe,
+  Calculator,
+  Sliders,
 } from 'lucide-react';
 
 interface UploadedFileItem {
@@ -532,10 +537,12 @@ export const NodeConfigPanel: React.FC = () => {
 
               {/* 5. AI AGENT NODE CONFIGURATION */}
               {isAgentNode && (
-                <div className="space-y-3.5">
+                <div className="space-y-4">
+                  {/* Model Selection */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Model Selection
+                    <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
+                      <span>Model Runtime</span>
+                      <span className="text-[10px] text-[#15803d] font-bold">Hybrid Local/Cloud</span>
                     </label>
                     <select
                       value={config.model || 'gemini-3.5-flash'}
@@ -550,42 +557,155 @@ export const NodeConfigPanel: React.FC = () => {
                     </select>
                   </div>
 
+                  {/* Skill & Persona Presets */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861] flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-[#7c3aed]" />
+                      <span>Skill & Persona Preset</span>
+                    </label>
+                    <select
+                      value={config.skillPreset || 'custom'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange('skillPreset', val);
+                        if (val === 'research') {
+                          handleFieldChange('instructions', 'Conduct thorough web research on the input topic. Cross-reference citations, extract factual data, and output an executive summary with verified sources.');
+                          handleFieldChange('tools', ['web_search', 'fetch_url']);
+                        } else if (val === 'quant') {
+                          handleFieldChange('instructions', 'Analyze all quantitative numbers in the context. Perform rigorous calculations with the calculator tool and summarize percentage metrics and unit costs.');
+                          handleFieldChange('tools', ['calculator', 'code_runner']);
+                        } else if (val === 'coder') {
+                          handleFieldChange('instructions', 'Write, validate, and execute sandboxed Python transformation scripts for the dataset. Return clean JSON structures and performance stats.');
+                          handleFieldChange('tools', ['code_runner', 'calculator']);
+                        } else if (val === 'summary') {
+                          handleFieldChange('instructions', 'Distill the workflow input into an executive briefing with high-priority key takeaways, actionable recommendations, and risk analysis.');
+                          handleFieldChange('tools', ['web_search', 'calculator']);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="custom">Custom Objective</option>
+                      <option value="research">Deep Research & Web Synthesis</option>
+                      <option value="quant">Quantitative & Statistical Analyst</option>
+                      <option value="coder">Code Architect & Sandboxed Runner</option>
+                      <option value="summary">Executive Briefing & Digest</option>
+                    </select>
+                  </div>
+
+                  {/* Instructions / System Prompt */}
                   <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Instructions / System Prompt
+                      System Instructions / Workflow Objective
                     </label>
                     <textarea
-                      rows={4}
+                      rows={3}
                       value={config.instructions || ''}
                       onChange={(e) => handleFieldChange('instructions', e.target.value)}
+                      placeholder="Instruct the model on its role, constraints, and desired output format..."
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] leading-relaxed resize-none"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-[#3d5045] uppercase tracking-wider">
-                      Tools connected
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#ffedd5] text-[#ea580c] border border-[#fed7aa] shadow-2xs">
-                        Web search
+                  {/* Autonomous Tools Selection */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-[#3d5045] uppercase tracking-wider flex items-center gap-1">
+                        <Wrench className="w-3 h-3 text-[#15803d]" />
+                        <span>Autonomous Tools</span>
+                      </label>
+                      <span className="text-[10px] text-[#7c3aed] font-semibold bg-[#f3e8ff] px-2 py-0.5 rounded-full border border-[#d8b4fe]">
+                        MCP Enabled
                       </span>
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd] shadow-2xs">
-                        Memory
-                      </span>
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#d1fae5] text-[#059669] border border-[#a7f3d0] shadow-2xs">
-                        JS skill
-                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {[
+                        { id: 'web_search', label: 'Web Search', desc: 'DuckDuckGo real-time crawling', color: 'orange' },
+                        { id: 'calculator', label: 'Calculator', desc: 'Safe math & statistics engine', color: 'blue' },
+                        { id: 'fetch_url', label: 'URL Extractor', desc: 'SSRF-protected web reader', color: 'emerald' },
+                        { id: 'code_runner', label: 'Code Runner', desc: 'Sandboxed Python runner', color: 'purple' },
+                      ].map((tool) => {
+                        const currentTools: string[] = config.tools || ['web_search', 'calculator', 'fetch_url', 'code_runner'];
+                        const isChecked = currentTools.includes(tool.id);
+                        return (
+                          <div
+                            key={tool.id}
+                            onClick={() => {
+                              const next = isChecked
+                                ? currentTools.filter((t) => t !== tool.id)
+                                : [...currentTools, tool.id];
+                              handleFieldChange('tools', next);
+                            }}
+                            className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                              isChecked
+                                ? 'bg-white border-[#15803d] shadow-2xs'
+                                : 'bg-[#faf8f5] border-[#e2dcd2] opacity-65'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}}
+                                className="w-3.5 h-3.5 accent-[#15803d] rounded cursor-pointer"
+                              />
+                              <div>
+                                <span className="text-xs font-bold text-[#19221d] block">
+                                  {tool.label}
+                                </span>
+                                <span className="text-[10px] text-[#78857e]">
+                                  {tool.desc}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#f0ede4] text-[#55635b]">
+                              builtin
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
+                  {/* Autonomous Execution Controls */}
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#f0ede4]">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-[#5c6861]">
+                        Max Tool Turns
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={config.maxIterations || 5}
+                        onChange={(e) => handleFieldChange('maxIterations', parseInt(e.target.value) || 5)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] text-[#19221d]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-[#5c6861]">
+                        Temperature
+                      </label>
+                      <input
+                        type="number"
+                        step={0.1}
+                        min={0}
+                        max={1}
+                        value={config.temperature ?? 0.2}
+                        onChange={(e) => handleFieldChange('temperature', parseFloat(e.target.value) || 0.2)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] text-[#19221d]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Error Recovery */}
                   <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-[#5c6861]">
-                      On error
+                      Error Recovery Policy
                     </label>
                     <input
                       type="text"
-                      value={config.onError || 'Retry twice, then notify me'}
+                      value={config.onError || 'Retry twice, then fallback to local heuristic'}
                       onChange={(e) => handleFieldChange('onError', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
                     />

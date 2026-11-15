@@ -26,6 +26,25 @@ export interface DockerStatus {
   }>;
 }
 
+export interface McpServerInfo {
+  name: string;
+  label: string;
+  description: string;
+  command: string;
+  args: string[];
+  enabled: boolean;
+  status: 'connected' | 'disconnected';
+  toolCount: number;
+  tools: any[];
+}
+
+export interface AvailableToolInfo {
+  name: string;
+  description: string;
+  isMcp: boolean;
+  serverName?: string;
+}
+
 export class HttpApiAdapter implements WorkflowApiAdapter {
   private baseUrl: string;
 
@@ -322,6 +341,62 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
 
   async getDockerStatus(): Promise<DockerStatus> {
     return this.request<DockerStatus>('/models/docker/status');
+  }
+
+  // ─── Model Context Protocol (MCP) Integrations ──────────────────────────────
+
+  async listMcpServers(): Promise<McpServerInfo[]> {
+    try {
+      const res = await this.request<{ servers: McpServerInfo[] }>('/mcp/servers');
+      return res.servers;
+    } catch {
+      return [
+        {
+          name: 'filesystem',
+          label: 'Local Filesystem MCP',
+          description: 'Secure file operations via Model Context Protocol.',
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
+          enabled: false,
+          status: 'disconnected',
+          toolCount: 4,
+          tools: [],
+        },
+        {
+          name: 'memory',
+          label: 'Knowledge Graph Memory MCP',
+          description: 'Persistent memory for cross-workflow recall.',
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-memory'],
+          enabled: false,
+          status: 'disconnected',
+          toolCount: 5,
+          tools: [],
+        },
+      ];
+    }
+  }
+
+  async connectMcpServer(name: string): Promise<any> {
+    return this.request(`/mcp/servers/${name}/connect`, { method: 'POST' });
+  }
+
+  async disconnectMcpServer(name: string): Promise<any> {
+    return this.request(`/mcp/servers/${name}/disconnect`, { method: 'POST' });
+  }
+
+  async listAvailableTools(): Promise<AvailableToolInfo[]> {
+    try {
+      const res = await this.request<{ tools: AvailableToolInfo[] }>('/mcp/tools');
+      return res.tools;
+    } catch {
+      return [
+        { name: 'web_search', description: 'DuckDuckGo web search', isMcp: false },
+        { name: 'calculator', description: 'Safe math evaluator', isMcp: false },
+        { name: 'fetch_url', description: 'SSRF-safe web extractor', isMcp: false },
+        { name: 'code_runner', description: 'Sandboxed Python runner', isMcp: false },
+      ];
+    }
   }
 }
 

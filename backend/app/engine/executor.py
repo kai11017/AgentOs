@@ -108,6 +108,7 @@ class WorkflowExecutor:
             "$json": merged_input,
             "$prev": prev_output,
             "$nodes": self.node_outputs,
+            "emit_log": lambda msg, level="info": self.emit_log(msg, level=level, node_id=node_id),
         }
 
         # Dispatch handler

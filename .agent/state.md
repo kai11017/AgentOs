@@ -24,6 +24,21 @@ End-to-End Product Integration & Live Local Model Execution
   - Implemented automatic routing in `AgentNodeHandler`: users can seamlessly select between `gemini-3.5-flash` (Cloud AI) and `qwen3.5:4b` (Local Ollama) in the node configuration sidebar.
   - Full automated test suite passing (4/4 tests passed in 55.95s).
   - Production frontend build validated with 0 errors.
+- **Autonomous Agent Tool Loop & Built-in Tools Engine**:
+  - Implemented `BaseTool` with dual schema generation: Gemini `function_declarations` (with `thoughtSignature` support) and Ollama/OpenAI `function` tools.
+  - Built 4 native core tools: `web_search` (DuckDuckGo search), `calculator` (safe math evaluator), `fetch_url` (SSRF-protected web reader), and `code_runner` (sandboxed Python script runner).
+  - Upgraded `AgentNodeHandler` with an autonomous multi-turn reasoning and tool-calling loop (up to 5 iterations) with real-time log streaming over WebSockets.
+- **Model Context Protocol (MCP) Integration**:
+  - Developed `MCPClient` supporting JSON-RPC 2.0 stdio subprocess communication and handshake.
+  - Implemented `MCPToolWrapper` adapting remote MCP tools into standard agent tools.
+  - Built `MCPManager` managing servers (Filesystem, Memory, GitHub, custom) and registering tools dynamically into the global tool registry.
+  - Created REST API endpoints: `/api/v1/mcp/servers`, `/api/v1/mcp/tools`, connect, and disconnect.
+- **Frontend Agent Configuration & Skills**:
+  - Updated `NodeConfigPanel.tsx` with Skill & Persona presets (Research, Quant, Coder, Executive Briefing).
+  - Added interactive tool toggle list for all built-in and MCP tools.
+  - Added autonomous turn limits and temperature sliders.
+  - Added MCP Server connection toggles and status badges in `AgentsView.tsx`.
+  - All 7 end-to-end integration tests passing cleanly.
 
 ## Next Steps
 1. Add external webhook ingress handler (`/api/v1/triggers/webhook/{token}`) and cron scheduler.
