@@ -97,65 +97,90 @@ LocalFlow Agent is built with a modern, scalable, and modular architecture desig
 
 ## 🚀 Quickstart & Setup Guide
 
-Get LocalFlow Agent running on your local machine in minutes.
+Get LocalFlow Agent / AgentOS running on your local machine in seconds.
 
 ### Prerequisites
 *   [Node.js](https://nodejs.org/) (>= 20)
 *   [Python](https://www.python.org/) (>= 3.11)
-*   [Docker & Docker Compose](https://www.docker.com/)
-*   [Ollama](https://ollama.ai/)
+*   [Docker](https://www.docker.com/) (Optional: for local PostgreSQL 16 container, SQLite fallback is included)
+*   [Ollama](https://ollama.ai/) (Optional: for 100% offline local model execution with `qwen3.5:4b` or `llama3`)
 
-### Step-by-Step Local Installation
+---
 
-1.  **Clone the repository & configure environments:**
+### ⚡ One-Click Startup (Recommended)
+
+You can launch the entire ecosystem (PostgreSQL container, FastAPI backend, and Vite frontend) with a single command:
+
+**On Windows (PowerShell):**
+```powershell
+.\start.ps1
+```
+
+**On Windows (Command Prompt / Double Click):**
+```cmd
+start.bat
+```
+
+The script will automatically:
+1. Detect or start the PostgreSQL container (`agentos-postgres` on port 5433).
+2. Activate your backend virtual environment and launch FastAPI on `http://127.0.0.1:8000`.
+3. Launch the Vite React frontend on `http://localhost:5173`.
+4. Open the visual workflow builder in your default web browser.
+
+---
+
+### Manual Step-by-Step Installation
+
+1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-org/localflow-agent.git
-    cd localflow-agent
-    cp .env.example .env
+    git clone https://github.com/kai11017/AgentOs.git
+    cd AgentOs
     ```
 
-2.  **Start Infrastructure:**
-    Start Redis and the Supabase/PostgreSQL database via Docker:
-    ```bash
-    docker compose up -d
-    ```
-
-3.  **Start Ollama and pull local models:**
-    Ensure your local LLM is ready (e.g., Mistral or Qwen):
-    ```bash
-    ollama run mistral
-    # or
-    ollama run qwen2.5-coder
-    ```
-
-4.  **Backend Setup:**
-    Install Python dependencies and start the backend services:
+2.  **Backend Environment Setup:**
     ```bash
     cd backend
-    pip install -r requirements.txt # or use `uv` / `poetry`
-    
-    # Start Celery worker in one terminal:
-    celery -A worker.app worker --loglevel=info
-    
-    # Start FastAPI server in another terminal:
-    uvicorn main:app --reload --port 8000
+    python -m venv .venv
+    # Windows:
+    .\.venv\Scripts\activate
+    # Linux/macOS:
+    source .venv/bin/activate
+
+    pip install -r requirements.txt
+    ```
+    Create `backend/.env` with your desired configuration:
+    ```env
+    DATABASE_URL=postgresql+asyncpg://agentos:agentos_secret@localhost:5433/agentos
+    OLLAMA_BASE_URL=http://127.0.0.1:11434
+    GEMINI_API_KEY=your_gemini_api_key_here
     ```
 
-5.  **Frontend Setup:**
-    Install Node dependencies and start the development server:
+3.  **Frontend Setup:**
     ```bash
     cd ../frontend
     npm install
     npm run dev
     ```
 
-### Running the Agent / Execution Engine
-You can trigger a workflow run directly from the UI or via CLI:
-```bash
-curl -X POST http://localhost:8000/api/v1/workflows/execute \
-     -H "Content-Type: application/json" \
-     -d '{"workflow_id": "example-workflow-123"}'
-```
+4.  **Running the Comprehensive Test Suite:**
+    Verify all 12 platform architectural components:
+    ```bash
+    python backend/tests/run_tests.py
+    ```
+
+---
+
+## 🧩 Architectural Highlights & Capabilities
+
+*   **Hybrid Model Runtime**: Seamlessly switch between local models via Ollama (`qwen3.5:4b`, `llama3:8b`) and cloud LLMs (`gemini-3.5-flash`) directly inside agent node configurations.
+*   **Autonomous Tool-Calling Loop**: Built-in ReAct reasoning loop (up to 5 autonomous turns) with live WebSocket streaming.
+*   **Built-in Tools**: Safe math evaluation (`calculator`), web search (`web_search`), SSRF-safe URL scraping (`fetch_url`), sandboxed Python execution (`code_runner`), and cross-node persistent state (`agent_memory`).
+*   **Model Context Protocol (MCP)**: Native JSON-RPC stdio client connecting external tools (Filesystem, Memory, GitHub).
+*   **Context Window Manager**: Heuristic token budgeting, output truncation, and Anchor + Tail multi-turn turn compaction to prevent context overflow.
+*   **External Webhook Ingress**: `/api/v1/triggers/webhook/{token}` supporting challenge verification and asynchronous execution triggers.
+*   **Human-in-the-Loop Node**: Pause executions at review gates with real-time UI banners and operator approve/reject endpoints.
+*   **Background Scheduler**: Built-in APScheduler for recurring cron and interval automations (`/api/v1/schedules`).
+*   **Workflow Portability**: Export and import full graphs as `.agentflow.json` with collision-free ID remapping.
 
 ---
 
