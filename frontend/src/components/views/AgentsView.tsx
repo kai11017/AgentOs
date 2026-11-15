@@ -196,11 +196,7 @@ export const AgentsView: React.FC = () => {
                 </span>
               </div>
               <p className="font-sans text-[11px] text-[#6e7f75] mt-0.5">
-                Active Model:{' '}
-                <strong className="text-[#0e2118] font-mono">
-                  {localModels[0]?.name || 'llama3:latest'}
-                </strong>{' '}
-                ({localModels[0]?.size || '4.7 GB'}) • GPU acceleration detected
+                Local Agent: <strong className="text-[#0e2118] font-mono">qwen3.5:4b</strong> • Cloud Agent: <strong className="text-[#15803d] font-mono">Gemini 3.5 Flash</strong> (Connected)
               </p>
             </div>
           </div>

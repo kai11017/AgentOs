@@ -24,13 +24,36 @@ class ModelInfoResponse(BaseModel):
 
 @router.get("", response_model=List[ModelInfoResponse])
 async def list_models():
-    """Lists local models via native Ollama or fallback catalog."""
+    """Lists available local models and connected cloud models."""
+    models = []
+
+    # 1. Connected Cloud Models (Google AI Studio)
+    if settings.GEMINI_API_KEY:
+        models.append(
+            ModelInfoResponse(
+                name="gemini-3.5-flash",
+                size="Cloud AI",
+                status="ready",
+                isLocal=False,
+                provider="Google AI Studio",
+            )
+        )
+        models.append(
+            ModelInfoResponse(
+                name="gemini-2.5-pro",
+                size="Cloud AI",
+                status="ready",
+                isLocal=False,
+                provider="Google AI Studio",
+            )
+        )
+
+    # 2. Local Models via Ollama
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:
             res = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
             if res.status_code == 200:
                 data = res.json()
-                models = []
                 for m in data.get("models", []):
                     size_mb = m.get("size", 0) / (1024 * 1024)
                     size_str = f"{size_mb / 1024:.1f} GB" if size_mb > 1024 else f"{size_mb:.0f} MB"
@@ -43,18 +66,17 @@ async def list_models():
                             provider="Ollama (Local)",
                         )
                     )
-                if models:
-                    return models
     except Exception:
         pass
 
+    if models:
+        return models
+
     # Standard default catalog for local development
     return [
-        ModelInfoResponse(name="llama3.2:3b", size="2.0 GB", status="ready", isLocal=True, provider="Ollama"),
-        ModelInfoResponse(name="qwen2.5-coder:7b", size="4.7 GB", status="ready", isLocal=True, provider="Ollama"),
-        ModelInfoResponse(name="deepseek-r1:8b", size="4.9 GB", status="ready", isLocal=True, provider="Ollama"),
+        ModelInfoResponse(name="qwen3.5:4b", size="3.3 GB", status="ready", isLocal=True, provider="Ollama"),
+        ModelInfoResponse(name="gemini-3.5-flash", size="Cloud AI", status="ready", isLocal=False, provider="Google AI"),
         ModelInfoResponse(name="gpt-4o-mini", size="Cloud API", status="ready", isLocal=False, provider="OpenAI"),
-        ModelInfoResponse(name="claude-3-7-sonnet", size="Cloud API", status="ready", isLocal=False, provider="Anthropic"),
     ]
 
 @router.post("/pull")

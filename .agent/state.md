@@ -17,12 +17,13 @@ End-to-End Product Integration & Live Local Model Execution
   - **Durability**: Node-level database state persistence for crash recovery and pause/resume, concurrency semaphores to protect local GPU VRAM, and `WAIT_ALL` merge semantics.
   - **Real-Time Observability**: Resumable WebSockets with event sequence IDs and token tracking.
 - **Frontend UI & Canvas**: Production build passing cleanly with Outfit & Plus Jakarta Sans typography, intensified colors, and Left-to-Right connection routing.
-- **Live End-to-End Product Integration**:
-  - Implemented `HttpApiAdapter` connecting React Flow to FastAPI endpoints with automatic fallback resilience.
-  - Implemented live WebSocket event stream in `useExecutionStore` pushing node status updates and live execution logs to the canvas console.
-  - Stabilized floating node action bar with continuous hover bridges preventing disappearance.
-  - Enhanced n8n-style node configuration forms (Email, Notion, Trigger, Reference Doc/Image upload, and live AI Agent model dropdown).
-  - Validated with complete automated test suite (4/4 passed) and production frontend build (0 errors).
+- **Hybrid Model Runtime (Cloud + Local)**:
+  - Integrated user's Google AI Studio Gemini API key (`GEMINI_API_KEY`) safely in `backend/.env`.
+  - Verified live Google Generative Language API connection (`gemini-3.5-flash` Status 200).
+  - Detected and integrated user's local model `qwen3.5:4b` (3.3 GB) via Ollama for offline execution.
+  - Implemented automatic routing in `AgentNodeHandler`: users can seamlessly select between `gemini-3.5-flash` (Cloud AI) and `qwen3.5:4b` (Local Ollama) in the node configuration sidebar.
+  - Full automated test suite passing (4/4 tests passed in 55.95s).
+  - Production frontend build validated with 0 errors.
 
 ## Next Steps
 1. Add external webhook ingress handler (`/api/v1/triggers/webhook/{token}`) and cron scheduler.

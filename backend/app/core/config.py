@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 import secrets
@@ -23,10 +23,16 @@ class Settings(BaseSettings):
     
     # Fallback SQLite DB for tests / zero-dependency mode
     SQLITE_FALLBACK_URL: str = "sqlite+aiosqlite:///./agentos.db"
+
+    # Cloud AI Model Credentials (Google AI Studio Gemini)
+    GEMINI_API_KEY: Optional[str] = Field(
+        default_factory=lambda: os.getenv("GEMINI_API_KEY")
+    )
     
     # Local Model Runtime (Native Ollama probe first, Docker fallback)
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
     OLLAMA_CONTAINER_NAME: str = "agentos-ollama"
+    DEFAULT_LOCAL_MODEL: str = "qwen3.5:4b"
     MAX_CONCURRENT_INFERENCES: int = 2
     
     # Security: Ephemeral Token for localhost process protection

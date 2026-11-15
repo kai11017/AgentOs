@@ -107,7 +107,7 @@ export const NodeConfigPanel: React.FC = () => {
       } else if (nodeType.includes('agent')) {
         // AI Agent profile
         initialTailoredConfig = {
-          model: 'llama3:latest',
+          model: 'gemini-3.5-flash',
           instructions:
             'Summarize the incoming email, research the topic on the web, and return key insights with sources.',
           tools: ['Web search', 'Memory', 'JS skill'],
@@ -538,16 +538,15 @@ export const NodeConfigPanel: React.FC = () => {
                       Model Selection
                     </label>
                     <select
-                      value={config.model || 'llama3:latest'}
+                      value={config.model || 'gemini-3.5-flash'}
                       onChange={(e) => handleFieldChange('model', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] font-semibold"
                     >
-                      <option value="llama3:latest">llama3:latest (Live Local Ollama - 4.7 GB)</option>
-                      <option value="llama3.2:3b">llama3.2:3b (Local Ollama - 2.0 GB)</option>
-                      <option value="qwen2.5-coder:7b">qwen2.5-coder:7b (Local Ollama - 4.7 GB)</option>
-                      <option value="deepseek-r1:8b">deepseek-r1:8b (Local Ollama - 4.9 GB)</option>
+                      <option value="gemini-3.5-flash">gemini-3.5-flash (Google AI Cloud - Connected)</option>
+                      <option value="qwen3.5:4b">qwen3.5:4b (Local Ollama - 3.3 GB - Installed)</option>
+                      <option value="gemini-2.5-pro">gemini-2.5-pro (Google AI Cloud - Deep Reasoning)</option>
+                      <option value="llama3:latest">llama3:latest (Local Ollama - 4.7 GB)</option>
                       <option value="gpt-4o-mini">GPT-4o mini (OpenAI Cloud)</option>
-                      <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Anthropic Cloud)</option>
                     </select>
                   </div>
 
