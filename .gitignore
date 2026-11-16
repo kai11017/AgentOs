@@ -40,3 +40,6 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
+# Runtime outputs
+outputs/
+

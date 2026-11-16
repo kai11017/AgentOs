@@ -48,19 +48,19 @@ async def seed_initial_demo_workflow():
                     position_y=260.0,
                     config={
                         "name": "Research",
-                        "model": "llama3:latest",
+                        "model": "qwen3.5:4b",
                         "instructions": "Summarize the incoming email, research the topic on the web, and return key insights with sources.",
-                        "tools": ["Web search", "Memory", "JS skill"],
+                        "tools": ["web_search", "calculator", "fetch_url", "code_runner"],
                     },
                 ),
                 WorkflowNodeModel(
                     id="node-email-1",
                     workflow_id="demo-workflow-1",
                     label="Send Email",
-                    definition_type="http-request",
+                    definition_type="email-send",
                     position_x=740.0,
                     position_y=180.0,
-                    config={"method": "POST", "provider": "Gmail", "toEmail": "team@company.com"},
+                    config={"toEmail": "team@company.com", "subject": "Executive Brief: Q4 AI Strategy", "fromEmail": "rippika@gmail.com"},
                 ),
                 WorkflowNodeModel(
                     id="node-notion-1",

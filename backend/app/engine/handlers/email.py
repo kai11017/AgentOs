@@ -1,0 +1,181 @@
+import os
+import smtplib
+import uuid
+import logging
+from email.message import EmailMessage
+from datetime import datetime, timezone
+from typing import Any, Dict
+from backend.app.engine.handlers.base import BaseNodeHandler
+from backend.app.engine.expressions import ExpressionEvaluator
+
+logger = logging.getLogger("agentos.handlers.email")
+
+class EmailNodeHandler(BaseNodeHandler):
+    """
+    Handles outbound email dispatch via SMTP or local HTML/EML preview persistence.
+    Supports dynamic expression templating in recipient, subject, and body.
+    """
+
+    async def execute(self, node: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        data = node.get("data", {})
+        config = data.get("config", {})
+        label = data.get("label", "Send Email")
+        emit_log = context.get("emit_log")
+
+        # 1. Resolve Recipient
+        raw_to = config.get("toEmail") or config.get("recipient") or config.get("to") or "team@company.com"
+        to_email = ExpressionEvaluator.evaluate_string(str(raw_to), context).strip()
+
+        # 2. Resolve Sender
+        raw_from = config.get("fromEmail") or config.get("sender") or os.getenv("SMTP_FROM", "agentos-notifications@localflow.ai")
+        from_email = ExpressionEvaluator.evaluate_string(str(raw_from), context).strip()
+
+        # 3. Resolve Subject
+        raw_subject = config.get("subject") or "Automated Executive Brief & Workflow Summary"
+        subject = ExpressionEvaluator.evaluate_string(str(raw_subject), context).strip()
+
+        # 4. Resolve Body
+        raw_body = config.get("emailBody") or config.get("body") or config.get("content")
+        if raw_body:
+            body = ExpressionEvaluator.evaluate_string(str(raw_body), context)
+        else:
+            # Fall back to upstream AI agent summary or $json output
+            json_input = context.get("$json", {})
+            if isinstance(json_input, dict):
+                body = (
+                    json_input.get("summary")
+                    or json_input.get("body")
+                    or json_input.get("content")
+                    or json_input.get("result")
+                    or json_input.get("context_block")
+                )
+            else:
+                body = str(json_input)
+
+            if not body:
+                body = "Hello,\n\nThe automated workflow step completed successfully with no additional content."
+
+        # 5. Check delivery mode & SMTP credentials
+        delivery_mode = config.get("deliveryMode") or "local_outbox"
+        smtp_host = config.get("smtpHost") or os.getenv("SMTP_HOST")
+        smtp_port = int(config.get("smtpPort") or os.getenv("SMTP_PORT", "587"))
+        smtp_user = config.get("smtpUser") or os.getenv("SMTP_USER")
+        smtp_password = config.get("smtpPassword") or os.getenv("SMTP_PASSWORD")
+        use_ssl = config.get("useSSL") or (smtp_port == 465)
+
+        has_smtp = bool(smtp_host and smtp_user and smtp_password) and (delivery_mode == "smtp")
+        message_id = f"msg-{uuid.uuid4().hex[:12]}"
+
+        # Always save a local copy to ./outputs/emails for full auditability and in-app viewing
+        output_dir = os.path.abspath("./outputs/emails")
+        os.makedirs(output_dir, exist_ok=True)
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        clean_subj = "".join(c for c in subject if c.isalnum() or c in (" ", "-", "_")).strip()[:30] or "email"
+        preview_filename = f"email_{timestamp_str}_{clean_subj}.html"
+        preview_file = os.path.join(output_dir, preview_filename)
+
+        delivery_badge = (
+            '<span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700;">✓ Delivered via Live SMTP</span>'
+            if has_smtp
+            else '<span style="background: #fefce8; color: #a16207; border: 1px solid #fef08a; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700;">⚡ Captured in AgentOS Local Outbox (Dev Mode)</span>'
+        )
+
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{subject}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; margin: 0; }}
+    .card {{ max-width: 680px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+    .header {{ background: #0a1c14; color: #ffffff; padding: 24px; border-bottom: 3px solid #22c55e; }}
+    .header h1 {{ margin: 0 0 10px 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }}
+    .meta {{ font-size: 12px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; }}
+    .content {{ padding: 28px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: #334155; }}
+    .footer {{ background: #f1f5f9; padding: 16px 28px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>{subject}</h1>
+      <div class="meta">
+        <div>To: <strong>{to_email}</strong> &bull; From: {from_email}</div>
+        <div>{delivery_badge}</div>
+      </div>
+    </div>
+    <div class="content">{body}</div>
+    <div class="footer">
+      Generated automatically by <strong>AgentOS Autonomous Workflow Engine</strong> on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}.
+    </div>
+  </div>
+</body>
+</html>"""
+
+        sent_via_smtp = False
+        smtp_error = None
+
+        if has_smtp:
+            if emit_log:
+                await emit_log(f"[{label}] 🔌 Connecting to live SMTP server {smtp_host}:{smtp_port}...", level="info")
+            try:
+                msg = EmailMessage()
+                msg["Subject"] = subject
+                msg["From"] = from_email
+                msg["To"] = to_email
+                msg.set_content(body)
+                msg.add_alternative(html_content, subtype="html")
+
+                if use_ssl:
+                    with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=12) as server:
+                        server.login(smtp_user, smtp_password)
+                        server.send_message(msg)
+                else:
+                    with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
+                        server.starttls()
+                        server.login(smtp_user, smtp_password)
+                        server.send_message(msg)
+
+                sent_via_smtp = True
+                if emit_log:
+                    await emit_log(f"[{label}] ✉️ Successfully dispatched live email to {to_email} via SMTP.", level="info")
+            except Exception as e:
+                smtp_error = str(e)
+                logger.warning(f"SMTP dispatch failed: {e}. Saved local copy instead.")
+                if emit_log:
+                    await emit_log(f"[{label}] ⚠️ SMTP send error: {e}. Saved to Local Outbox.", level="warning")
+
+        # Save the preview file (with final status)
+        with open(preview_file, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        if not sent_via_smtp and emit_log:
+            await emit_log(
+                f"[{label}] ✉️ [Email Delivered to Outbox] To: {to_email} | Subject: '{subject}' | Saved preview to ./outputs/emails/{preview_filename}",
+                level="info",
+            )
+
+        return {
+            "status": "sent",
+            "delivery": "smtp" if sent_via_smtp else "local_outbox",
+            "recipient": to_email,
+            "toEmail": to_email,
+            "sender": from_email,
+            "fromEmail": from_email,
+            "subject": subject,
+            "body": body,
+            "bodyLength": len(body),
+            "messageId": message_id,
+            "previewFile": preview_file,
+            "outboxFilename": preview_filename,
+            "previewUrl": f"/api/v1/emails/{preview_filename}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "smtpError": smtp_error,
+            "data": {
+                "to": to_email,
+                "subject": subject,
+                "summary": body[:200] if len(body) > 200 else body,
+                "previewFile": preview_file,
+                "delivery": "smtp" if sent_via_smtp else "local_outbox",
+            },
+        }

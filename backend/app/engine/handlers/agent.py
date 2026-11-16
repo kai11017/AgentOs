@@ -256,8 +256,34 @@ class AgentNodeHandler(BaseNodeHandler):
         tools_used_set: Set[str],
         sources_found: List[str],
     ) -> Optional[Dict[str, Any]]:
-        target_model = model_name if not any(k in model_name.lower() for k in ["gemini", "google"]) else settings.DEFAULT_LOCAL_MODEL
         chat_url = f"{settings.OLLAMA_BASE_URL}/api/chat"
+        tags_url = f"{settings.OLLAMA_BASE_URL}/api/tags"
+
+        # Auto-detect installed models in Ollama
+        installed_models: List[str] = []
+        try:
+            async with httpx.AsyncClient(timeout=1.5) as tag_client:
+                tags_res = await tag_client.get(tags_url)
+                if tags_res.status_code == 200:
+                    installed_models = [m.get("name", "") for m in tags_res.json().get("models", [])]
+        except Exception:
+            pass
+
+        target_model = model_name
+        if any(k in target_model.lower() for k in ["gemini", "google", "cloud"]):
+            target_model = settings.DEFAULT_LOCAL_MODEL
+
+        # If target model is not in Ollama's installed models, select an available one
+        if installed_models and target_model not in installed_models:
+            match = next((m for m in installed_models if target_model.split(":")[0] in m), None)
+            if match:
+                target_model = match
+            elif settings.DEFAULT_LOCAL_MODEL in installed_models:
+                target_model = settings.DEFAULT_LOCAL_MODEL
+            else:
+                target_model = installed_models[0]
+
+        await log(f"[AI Agent] 🤖 Selected local Ollama model: '{target_model}'", level="info")
         ollama_tools = global_tool_registry.to_ollama_tools(selected_tools)
 
         messages: List[Dict[str, Any]] = [

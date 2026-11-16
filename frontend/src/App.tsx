@@ -5,6 +5,8 @@ import { WorkflowToolbar } from '@/components/toolbar/WorkflowToolbar';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 import { NodeConfigPanel } from '@/components/panels/NodeConfigPanel';
 import { DeployModal } from '@/components/modals/DeployModal';
+import { CreateWorkflowModal } from '@/components/modals/CreateWorkflowModal';
+import { EmailOutboxModal } from '@/components/modals/EmailOutboxModal';
 
 // Views matching the 9 design mockups
 import { HomeView } from '@/components/views/HomeView';
@@ -127,6 +129,12 @@ export default function App() {
 
       {/* Deploy and Share Modal (Screenshot 9) */}
       <DeployModal />
+
+      {/* New Workflow Creator Dialog */}
+      <CreateWorkflowModal />
+
+      {/* Email Outbox and SMTP Verification Modal */}
+      <EmailOutboxModal />
     </div>
   );
 }

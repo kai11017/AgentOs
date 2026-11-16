@@ -65,10 +65,12 @@ async def run_executor_background(workflow_dict: dict, execution_id: str, cancel
 @router.post("/workflows/{workflow_id}/execute", response_model=ExecutionResponse)
 async def execute_workflow(
     workflow_id: str,
-    req: ExecuteWorkflowRequest,
     background_tasks: BackgroundTasks,
+    req: Optional[ExecuteWorkflowRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if req is None:
+        req = ExecuteWorkflowRequest()
     result = await db.execute(select(WorkflowModel).where(WorkflowModel.id == workflow_id))
     wf = result.scalar_one_or_none()
     if not wf:

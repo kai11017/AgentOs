@@ -29,10 +29,14 @@ interface UIState {
   isConfigPanelOpen: boolean;
   isExecutionPanelOpen: boolean;
   isDeployModalOpen: boolean;
+  isCreateWorkflowModalOpen: boolean;
+  isEmailOutboxOpen: boolean;
   togglePalette: () => void;
   toggleConfigPanel: () => void;
   toggleExecutionPanel: () => void;
   setDeployModalOpen: (open: boolean) => void;
+  setCreateWorkflowModalOpen: (open: boolean) => void;
+  setEmailOutboxOpen: (open: boolean) => void;
 
   // Node palette filter
   paletteSearchQuery: string;
@@ -73,10 +77,14 @@ export const useUIStore = create<UIState>((set, get) => ({
   isConfigPanelOpen: true,
   isExecutionPanelOpen: true,
   isDeployModalOpen: false,
+  isCreateWorkflowModalOpen: false,
+  isEmailOutboxOpen: false,
   togglePalette: () => set((s) => ({ isPaletteOpen: !s.isPaletteOpen })),
   toggleConfigPanel: () => set((s) => ({ isConfigPanelOpen: !s.isConfigPanelOpen })),
   toggleExecutionPanel: () => set((s) => ({ isExecutionPanelOpen: !s.isExecutionPanelOpen })),
   setDeployModalOpen: (open) => set({ isDeployModalOpen: open }),
+  setCreateWorkflowModalOpen: (open) => set({ isCreateWorkflowModalOpen: open }),
+  setEmailOutboxOpen: (open) => set({ isEmailOutboxOpen: open }),
 
   // Node palette filter
   paletteSearchQuery: '',

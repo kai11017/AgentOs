@@ -19,6 +19,8 @@ import { mcpToolNode } from './tool/MCPTool';
 import { javaScriptSkillNode } from './tool/JavaScriptSkill';
 import { pythonExecutionNode } from './tool/PythonExecution';
 import { httpRequestNode } from './tool/HTTPRequest';
+import { emailSendNode } from './tool/EmailSend';
+import { infoRetrievalNode } from './tool/InfoRetrieval';
 import { fileSystemNode } from './tool/FileSystem';
 import { databaseNode } from './tool/Database';
 import { customToolNode } from './tool/CustomTool';
@@ -69,6 +71,8 @@ class NodeRegistry {
       javaScriptSkillNode,
       pythonExecutionNode,
       httpRequestNode,
+      emailSendNode,
+      infoRetrievalNode,
       fileSystemNode,
       databaseNode,
       customToolNode,

@@ -58,18 +58,8 @@ class HTTPNodeHandler(BaseNodeHandler):
         
         # Email / Gmail specialization
         if "email" in node_label or "mail" in node_label:
-            to_email = config.get("toEmail") or "team@company.com"
-            subject = config.get("subject") or "Automated AI Research Summary"
-            body = config.get("emailBody") or context.get("$json", {}).get("summary", "Summary synthesized.")
-            
-            return {
-                "status": "sent",
-                "service": "Gmail",
-                "recipient": to_email,
-                "subject": subject,
-                "bodyLength": len(body),
-                "messageId": f"msg_{hash(to_email + subject) & 0xffffffff:x}",
-            }
+            from backend.app.engine.handlers.email import EmailNodeHandler
+            return await EmailNodeHandler().execute(node, context)
             
         # Standard HTTP Request
         url = config.get("url", "https://api.github.com")

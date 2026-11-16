@@ -7,7 +7,32 @@
 a80a2be
 
 ## Current Milestone
-Phase 7: Dynamic DAG Routing, Conditional Branching, Local Output Exporters & Automations Manager
+Phase 8: Workflow Creation Dialog, Database Canvas Auto-Saving, Email Node with Simulated Outbox & Live SMTP, Info Retrieval Node, and In-App Email Outbox
+
+## Completed
+- **Workflow Creation Modal & Database Persistence**:
+  - Built `CreateWorkflowModal.tsx` asking for workflow name, description, starter presets (Clean Canvas, AI Research & Email, Info Retrieval & Export, Conditional Quality Gate), and tags.
+  - Automatically saves the newly created workflow directly into PostgreSQL and routes to the canvas editor.
+  - Refactored `WorkflowsView.tsx` and `HomeView.tsx` to remove all static mock arrays and display real database workflows with accurate node counts and status.
+- **Workflow Canvas Auto-Save & Manual Save**:
+  - Updated `WorkflowToolbar.tsx` with an explicit "Save" / "Saved" status button with dirty indicator.
+  - Made "Run workflow" asynchronously auto-persist the latest canvas nodes and edges to PostgreSQL before executing.
+  - Added inline rename for workflows that automatically updates PostgreSQL on enter/blur.
+- **Email Node with Simulated Outbox & Live SMTP**:
+  - Built dedicated `EmailNodeHandler` (`backend/app/engine/handlers/email.py`) supporting dynamic expression evaluation for sender, recipient, subject, and body.
+  - Transparent Delivery Modes:
+    - **Simulated Local Outbox (Dev Mode)**: Captures agent-dispatched emails without requiring SMTP credentials, saves styled HTML previews to `./outputs/emails/`, and emits real-time WebSocket progress.
+    - **Live SMTP**: Dispatches real emails via Gmail (port 587 STARTTLS with Google App Passwords) or custom SMTP servers (port 465 SSL or 587).
+  - Built `EmailOutboxModal.tsx` in frontend and wired "Outbox" button on toolbar and inspector. Provides a full interactive email viewer with live search, email header inspection, HTML iframe rendering, and SMTP connection testing.
+  - Added backend endpoints: `GET /api/v1/emails`, `GET /api/v1/emails/{filename}`, `DELETE /api/v1/emails/{filename}`, and `POST /api/v1/emails/test-smtp`.
+- **Info Retrieval & Search Node**:
+  - Built `InfoRetrievalNodeHandler` (`backend/app/engine/handlers/retrieval.py`) supporting DuckDuckGo live web search, public URL fetching, and document knowledge base retrieval.
+  - Added `InfoRetrieval.ts` node definition and rich inspector configuration in `NodeConfigPanel.tsx`.
+- **Dynamic Ollama Model Auto-Discovery**:
+  - Updated `AgentNodeHandler` to query Ollama's `/api/tags` and automatically bind the installed model (e.g. `qwen3.5:4b`) when `llama3:latest` or missing models are requested, preventing 404 breaks.
+- **Full Architecture Test Validation**:
+  - 18/18 production architecture tests verified passing.
+  - Frontend production build compiling with 0 errors.
 
 ## Completed
 - **Architecture Finalized & Hardened**:

@@ -19,6 +19,8 @@ from backend.app.engine.handlers.transform import TransformNodeHandler
 from backend.app.engine.handlers.condition import IfElseNodeHandler
 from backend.app.engine.handlers.file_export import FileExportNodeHandler
 from backend.app.engine.handlers.notification import NotificationNodeHandler
+from backend.app.engine.handlers.email import EmailNodeHandler
+from backend.app.engine.handlers.retrieval import InfoRetrievalNodeHandler
 from backend.app.engine.expressions import ExpressionEvaluator
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.api.v1.credentials import resolve_credential
@@ -57,6 +59,19 @@ HANDLERS = {
     "filesystem": FileExportNodeHandler(),
     "file-writer": FileExportNodeHandler(),
     "export": FileExportNodeHandler(),
+    "email": EmailNodeHandler(),
+    "send-email": EmailNodeHandler(),
+    "email-send": EmailNodeHandler(),
+    "mail": EmailNodeHandler(),
+    "smtp": EmailNodeHandler(),
+    "gmail": EmailNodeHandler(),
+    "email-notification": EmailNodeHandler(),
+    "info-retrieval": InfoRetrievalNodeHandler(),
+    "web-search": InfoRetrievalNodeHandler(),
+    "search": InfoRetrievalNodeHandler(),
+    "web-scrape": InfoRetrievalNodeHandler(),
+    "retrieval": InfoRetrievalNodeHandler(),
+    "web-reader": InfoRetrievalNodeHandler(),
     "notification": NotificationNodeHandler(),
     "webhook-out": NotificationNodeHandler(),
     "slack": NotificationNodeHandler(),

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Dict, Any
 from backend.app.core.database import AsyncSessionLocal
@@ -12,7 +13,16 @@ class KnowledgeNodeHandler:
         node_id = node.get("id", "unknown")
         data = node.get("data", {})
         config = data.get("config", {}) or {}
-        emit_log = context.get("emit_log", lambda msg, level="info": None)
+        emit_log = context.get("emit_log")
+
+        async def log(msg: str, level: str = "info"):
+            if emit_log:
+                try:
+                    res = emit_log(msg, level=level)
+                    if asyncio.iscoroutine(res):
+                        await res
+                except Exception:
+                    pass
 
         collection = config.get("collection") or config.get("collectionName") or "default"
         top_k = int(config.get("topK") or config.get("limit") or 3)
@@ -36,7 +46,7 @@ class KnowledgeNodeHandler:
                 query = query.replace(f"{{{{{k}}}}}", v)
 
         if not query.strip():
-            emit_log(f"Knowledge Node '{node_id}': No query provided, skipping search.", level="warning")
+            await log(f"Knowledge Node '{node_id}': No query provided, skipping search.", level="warning")
             return {
                 "status": "skipped",
                 "collection": collection,
@@ -45,7 +55,7 @@ class KnowledgeNodeHandler:
                 "total_matches": 0,
             }
 
-        emit_log(f"Knowledge Search: querying '{collection}' for: '{query[:60]}...'", level="info")
+        await log(f"Knowledge Search: querying '{collection}' for: '{query[:60]}...'", level="info")
 
         async with AsyncSessionLocal() as db:
             results = await LocalVectorStore.query(
@@ -55,7 +65,7 @@ class KnowledgeNodeHandler:
                 top_k=top_k,
             )
 
-        emit_log(f"Knowledge Search: found {len(results)} relevant document passages.", level="info")
+        await log(f"Knowledge Search: found {len(results)} relevant document passages.", level="info")
 
         context_blocks = [
             f"--- Source: {r['filename']} (Relevance: {r['score']}) ---\n{r['content']}"

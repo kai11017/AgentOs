@@ -37,9 +37,11 @@ interface UploadedFileItem {
 export const NodeConfigPanel: React.FC = () => {
   const isConfigPanelOpen = useUIStore((s) => s.isConfigPanelOpen);
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
+  const setEmailOutboxOpen = useUIStore((s) => s.setEmailOutboxOpen);
 
   const nodes = useWorkflowStore((s) => s.nodes);
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
+  const saveWorkflow = useWorkflowStore((s) => s.saveWorkflow);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || nodes[0];
   const definition = selectedNode ? nodeRegistry.get(selectedNode.data.definitionType) : null;
@@ -107,16 +109,23 @@ export const NodeConfigPanel: React.FC = () => {
       };
 
       // Email node profile
-      if (nodeLabel.includes('email') || nodeType === 'http-request') {
+      if (nodeType === 'email-send' || nodeLabel.includes('email') || nodeLabel.includes('mail')) {
         initialTailoredConfig = {
+          deliveryMode: 'local_outbox',
           fromEmail: 'rippika@gmail.com',
           toEmail: 'team@company.com',
           subject: 'Weekly Research Summary & Key Insights',
           bodyType: 'HTML',
           emailBody:
-            'Hello Team,\n\nPlease find attached the automated research analysis and action items synthesized by the AI Agent.',
+            'Hello Team,\n\nPlease find attached the automated research analysis and action items synthesized by the AI Agent:\n\n{{ $json.summary || $json.body }}',
           onError: 'Retry twice, then notify me',
-          attachments: ['research-report.pdf'],
+          ...initialTailoredConfig,
+        };
+      } else if (nodeType === 'info-retrieval' || nodeLabel.includes('retrieval') || nodeLabel.includes('search')) {
+        initialTailoredConfig = {
+          query: '{{ $json.topic || $json.query || "Autonomous AI Workflows" }}',
+          searchType: 'web',
+          maxResults: 5,
           ...initialTailoredConfig,
         };
       } else if (nodeLabel.includes('notion') || nodeType === 'database') {
@@ -156,10 +165,10 @@ export const NodeConfigPanel: React.FC = () => {
       } else if (nodeType.includes('agent')) {
         // AI Agent profile
         initialTailoredConfig = {
-          model: 'gemini-3.5-flash',
+          model: 'qwen3.5:4b',
           instructions:
-            'Summarize the incoming email, research the topic on the web, and return key insights with sources.',
-          tools: ['Web search', 'Memory', 'JS skill'],
+            'Summarize the incoming data, research the topic on the web, and return key insights with sources.',
+          tools: ['web_search', 'calculator', 'fetch_url', 'code_runner'],
           onError: 'Retry twice, then notify me',
           temperature: 0.7,
           ...initialTailoredConfig,
@@ -180,7 +189,7 @@ export const NodeConfigPanel: React.FC = () => {
     setIsSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     updateNodeData(selectedNode.id, {
       config: {
         ...selectedNode.data.config,
@@ -188,6 +197,7 @@ export const NodeConfigPanel: React.FC = () => {
       },
     });
     setIsSaved(true);
+    await saveWorkflow();
     setTimeout(() => setIsSaved(false), 2000);
   };
 
@@ -218,7 +228,9 @@ export const NodeConfigPanel: React.FC = () => {
   const nodeLabelLower = (selectedNode.data.label || '').toLowerCase();
   const nodeType = selectedNode.data.definitionType;
 
-  const isEmailNode = nodeLabelLower.includes('email') || nodeLabelLower.includes('mail');
+  const isEmailNode = nodeLabelLower.includes('email') || nodeLabelLower.includes('mail') || nodeType === 'email-send';
+  const isInfoRetrievalNode =
+    nodeLabelLower.includes('retriev') || nodeLabelLower.includes('search') || nodeType === 'info-retrieval';
   const isTriggerNode = nodeType === 'trigger' || nodeLabelLower.includes('trigger');
   const isDatabaseNode = nodeType === 'database' || nodeLabelLower.includes('notion');
   const isDocReferenceNode =
@@ -299,10 +311,141 @@ export const NodeConfigPanel: React.FC = () => {
 
               {/* 1. EMAIL NODE CONFIGURATION (When user clicks Send Email / Gmail) */}
               {isEmailNode && (
-                <div className="space-y-3.5">
+                <div className="space-y-4">
+                  {/* Delivery Mode Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
+                      <span>Delivery Mode</span>
+                      <button
+                        type="button"
+                        onClick={() => setEmailOutboxOpen(true)}
+                        className="text-[10px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Mail className="w-2.5 h-2.5" />
+                        <span>View Outbox</span>
+                      </button>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleFieldChange('deliveryMode', 'local_outbox')}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          (config.deliveryMode || 'local_outbox') === 'local_outbox'
+                            ? 'bg-amber-50/70 border-amber-300 text-amber-900 shadow-2xs'
+                            : 'bg-white border-[#ded8cc] text-[#6a7c72] hover:bg-[#faf8f4]'
+                        }`}
+                      >
+                        <div className="font-bold text-[11px] flex items-center gap-1">
+                          <span>⚡ Local Outbox</span>
+                        </div>
+                        <div className="text-[9px] text-[#86948d] mt-0.5 leading-tight">
+                          No credentials needed. Safe simulated testing.
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleFieldChange('deliveryMode', 'smtp')}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          config.deliveryMode === 'smtp'
+                            ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 shadow-2xs'
+                            : 'bg-white border-[#ded8cc] text-[#6a7c72] hover:bg-[#faf8f4]'
+                        }`}
+                      >
+                        <div className="font-bold text-[11px] flex items-center gap-1">
+                          <span>✉️ Live SMTP</span>
+                        </div>
+                        <div className="text-[9px] text-[#86948d] mt-0.5 leading-tight">
+                          Sends real emails via Gmail/Custom server.
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mode Notice Banner */}
+                  {(config.deliveryMode || 'local_outbox') === 'local_outbox' ? (
+                    <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[10px] text-amber-900 flex items-start justify-between gap-2">
+                      <div>
+                        <strong>Development Mode:</strong> Emails are captured into AgentOS Outbox and saved as HTML previews on disk.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEmailOutboxOpen(true)}
+                        className="px-2 py-1 bg-amber-200/60 hover:bg-amber-200 text-amber-950 font-bold rounded-lg shrink-0 transition-colors cursor-pointer"
+                      >
+                        Open Outbox
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-[#fdfcf9] rounded-xl border border-emerald-200/70 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                          SMTP Mail Server Settings
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailOutboxOpen(true)}
+                          className="text-[9px] font-bold text-emerald-700 hover:underline"
+                        >
+                          Test SMTP Connection
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] text-[#5c6861]">Host</label>
+                          <input
+                            type="text"
+                            value={config.smtpHost || 'smtp.gmail.com'}
+                            onChange={(e) => handleFieldChange('smtpHost', e.target.value)}
+                            placeholder="smtp.gmail.com"
+                            className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-[#5c6861]">Port</label>
+                          <input
+                            type="number"
+                            value={config.smtpPort || 587}
+                            onChange={(e) => handleFieldChange('smtpPort', parseInt(e.target.value) || 587)}
+                            className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-[#5c6861]">Username / Sender Email</label>
+                        <input
+                          type="email"
+                          value={config.smtpUser || config.fromEmail || ''}
+                          onChange={(e) => {
+                            handleFieldChange('smtpUser', e.target.value);
+                            handleFieldChange('fromEmail', e.target.value);
+                          }}
+                          placeholder="yourname@gmail.com"
+                          className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-[#5c6861] flex items-center justify-between">
+                          <span>App Password</span>
+                          <span className="text-[9px] text-[#86948d]">Google App Password</span>
+                        </label>
+                        <input
+                          type="password"
+                          value={config.smtpPassword || ''}
+                          onChange={(e) => handleFieldChange('smtpPassword', e.target.value)}
+                          placeholder="16-character App Password"
+                          className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-[#5c6861]">
-                      From Email (Account)
+                      From Email (Sender Address)
                     </label>
                     <input
                       type="text"
@@ -367,6 +510,79 @@ export const NodeConfigPanel: React.FC = () => {
                       onChange={(e) => handleFieldChange('onError', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* INFO RETRIEVAL / WEB SEARCH NODE CONFIGURATION */}
+              {isInfoRetrievalNode && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <FieldLabelWithExpression label="Search Query / Prompt *" fieldName="query" />
+                    <input
+                      type="text"
+                      value={config.query || ''}
+                      onChange={(e) => handleFieldChange('query', e.target.value)}
+                      placeholder="e.g. {{$json.topic}} or 'Autonomous AI trends'"
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Search Source / Provider
+                    </label>
+                    <select
+                      value={config.searchType || 'web'}
+                      onChange={(e) => handleFieldChange('searchType', e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                    >
+                      <option value="web">DuckDuckGo Web Search (Live)</option>
+                      <option value="url">Direct URL Fetch & Extraction</option>
+                      <option value="knowledge">Local Document Knowledge Base (RAG)</option>
+                    </select>
+                  </div>
+
+                  {config.searchType === 'url' && (
+                    <div className="space-y-1">
+                      <FieldLabelWithExpression label="Target URL" fieldName="url" />
+                      <input
+                        type="text"
+                        value={config.url || ''}
+                        onChange={(e) => handleFieldChange('url', e.target.value)}
+                        placeholder="https://example.com/article"
+                        className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
+                      <span>Max Results</span>
+                      <span className="text-[#15803d] font-bold">{config.maxResults || 5}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={config.maxResults || 5}
+                      onChange={(e) => handleFieldChange('maxResults', parseInt(e.target.value) || 5)}
+                      className="w-full accent-[#15803d] cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#5c6861]">
+                      Output Format
+                    </label>
+                    <div className="p-2.5 bg-[#f5f2eb] rounded-xl border border-[#ded8cc] text-[11px] text-[#5c6861] space-y-1">
+                      <div className="font-semibold text-[#19221d]">Stores into $json:</div>
+                      <div className="font-mono text-[10px] text-[#2d6a4f] space-y-0.5">
+                        <div>$json.results (raw items)</div>
+                        <div>$json.sources (urls & titles)</div>
+                        <div>$json.context_block (ready for AI Prompt)</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -801,7 +1017,7 @@ export const NodeConfigPanel: React.FC = () => {
               )}
 
               {/* 7. GENERIC / FALLBACK CONFIG FIELDS */}
-              {!isEmailNode && !isTriggerNode && !isDatabaseNode && !isDocReferenceNode && !isAgentNode && !isConditionNode && (
+              {!isEmailNode && !isInfoRetrievalNode && !isTriggerNode && !isDatabaseNode && !isDocReferenceNode && !isAgentNode && !isConditionNode && (
                 <div className="space-y-3">
                   {definition?.configFields.map((field) => (
                     <div key={field.name} className="space-y-1">
@@ -824,10 +1040,31 @@ export const NodeConfigPanel: React.FC = () => {
               <span className="text-[11px] font-bold text-[#5c6861] uppercase tracking-wider">
                 Node Output Data
               </span>
+
+              {isEmailNode && (
+                <button
+                  type="button"
+                  onClick={() => setEmailOutboxOpen(true)}
+                  className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Open Sent Email in Outbox Viewer</span>
+                </button>
+              )}
+
               <pre className="p-3 bg-[#f5f2eb] border border-[#ded8cc] rounded-xl text-[11px] font-mono text-[#19221d] overflow-x-auto">
 {JSON.stringify(
   isEmailNode
-    ? { status: 'sent', messageId: 'msg_982fa3', recipient: config.toEmail || 'team@company.com' }
+    ? {
+        status: 'sent',
+        delivery: config.deliveryMode || 'local_outbox',
+        recipient: config.toEmail || 'team@company.com',
+        sender: config.fromEmail || 'rippika@gmail.com',
+        subject: config.subject || 'Executive Brief',
+        message: 'Dispatched and saved to AgentOS Outbox',
+      }
+    : isInfoRetrievalNode
+    ? { query: config.query || 'Autonomous AI Workflows', sourcesCount: config.maxResults || 5, results: [{ title: 'Overview', url: 'https://duckduckgo.com' }] }
     : isTriggerNode
     ? { event: 'email_received', sender: 'john@example.com', subject: 'Urgent Q4 review' }
     : isDocReferenceNode
