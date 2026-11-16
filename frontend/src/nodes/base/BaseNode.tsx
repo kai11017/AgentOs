@@ -16,7 +16,7 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
   const duplicateNode = useWorkflowStore((s) => s.duplicateNode);
 
   const nodeResult = currentExecution?.nodeResults[id];
-  const executionStatus: ExecutionStatus = nodeResult?.status || data.executionStatus || 'idle';
+  const executionStatus: ExecutionStatus = nodeResult?.status || (currentExecution ? (data.executionStatus || 'idle') : 'idle');
 
   const category = definition?.category || 'agent';
 
@@ -99,7 +99,7 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
           {executionStatus === 'completed' && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#15803d] bg-[#dcfce7] border border-[#86efac]/80 px-2 py-0.5 rounded-full shadow-2xs">
               <Check className="w-2.5 h-2.5 stroke-[2.5]" />
-              Completed 6.4s
+              {nodeResult?.duration ? `${(nodeResult.duration / 1000).toFixed(1)}s` : 'Completed'}
             </span>
           )}
           {executionStatus === 'running' && (
