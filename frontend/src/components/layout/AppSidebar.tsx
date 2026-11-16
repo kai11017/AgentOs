@@ -7,6 +7,7 @@ import {
   Bot,
   PenTool,
   Clock,
+  Zap,
   Settings as SettingsIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'workflows', label: 'Workflows', icon: Network },
+  { id: 'automations', label: 'Automations', icon: Zap },
   { id: 'templates', label: 'Templates', icon: LayoutGrid },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'tools', label: 'Tools', icon: PenTool },

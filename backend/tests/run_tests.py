@@ -502,8 +502,185 @@ async def main():
         print(f"  Isolated transform step test executed with expression resolution (Greeting: Welcome Kai!)")
         print("  [PASS] Visual Expression Evaluator & Isolated Node Step Testing")
 
+        print("\n--- 18. Testing Dynamic DAG Routing, Conditional Branching & File Exporters ---")
+        from backend.app.engine.executor import WorkflowExecutor
+        from backend.app.models.execution import ExecutionModel
+        from backend.app.core.database import AsyncSessionLocal
+        from datetime import datetime, timezone
+
+        test_report_file = os.path.abspath("./outputs/test_automated_report.md")
+        test_failure_file = os.path.abspath("./outputs/test_failure_report.md")
+        if os.path.exists(test_report_file):
+            os.remove(test_report_file)
+        if os.path.exists(test_failure_file):
+            os.remove(test_failure_file)
+
+        # Build a 5-node DAG:
+        # Node 1: Trigger -> Node 2: Transform -> Node 3: IfElse (score > 80)
+        # -> True branch: Node 4 (File Export)
+        # -> False branch: Node 5 (File Export) -> Node 6 (Notification)
+        test_exec_wf = {
+            "id": "demo-workflow-1",
+            "name": "Industrial Robotics Automation Test",
+            "nodes": [
+                {
+                    "id": "node-trig-1",
+                    "type": "trigger",
+                    "data": {
+                        "label": "Telemetry Trigger",
+                        "definitionType": "trigger",
+                        "config": {"domain": "Industrial Robotics", "device": "ARM-007"},
+                    },
+                },
+                {
+                    "id": "node-trans-2",
+                    "type": "transform",
+                    "data": {
+                        "label": "Metric Computations",
+                        "definitionType": "transform",
+                        "config": {
+                            "fields": {
+                                "topic": "Autonomous AI Systems in {{ $json.domain }}",
+                                "score": 85,
+                                "threshold": 80,
+                            }
+                        },
+                    },
+                },
+                {
+                    "id": "node-cond-3",
+                    "type": "if-else",
+                    "data": {
+                        "label": "Quality Gate Check",
+                        "definitionType": "if-else",
+                        "config": {
+                            "property": "{{ $json.score }}",
+                            "operator": "greater_than",
+                            "compareValue": "{{ $json.threshold }}",
+                        },
+                    },
+                },
+                {
+                    "id": "node-export-true-4",
+                    "type": "file-export",
+                    "data": {
+                        "label": "Export Inspection Report",
+                        "definitionType": "file-export",
+                        "config": {
+                            "path": "./outputs/test_automated_report.md",
+                            "format": "markdown",
+                            "content": "# Report for {{ $json.topic }}\nScore: {{ $json.score }} (Passed)",
+                        },
+                    },
+                },
+                {
+                    "id": "node-export-false-5",
+                    "type": "file-export",
+                    "data": {
+                        "label": "Export Failure Log",
+                        "definitionType": "file-export",
+                        "config": {
+                            "path": "./outputs/test_failure_report.md",
+                            "format": "markdown",
+                            "content": "# Failure Notice: Score below threshold",
+                        },
+                    },
+                },
+                {
+                    "id": "node-notif-false-6",
+                    "type": "notification",
+                    "data": {
+                        "label": "Alert Downstream Channel",
+                        "definitionType": "notification",
+                        "config": {
+                            "provider": "generic",
+                            "webhookUrl": "https://example.com/alerts",
+                        },
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "e1-2", "source": "node-trig-1", "target": "node-trans-2"},
+                {"id": "e2-3", "source": "node-trans-2", "target": "node-cond-3"},
+                {
+                    "id": "e3-4",
+                    "source": "node-cond-3",
+                    "target": "node-export-true-4",
+                    "sourceHandle": "true",
+                },
+                {
+                    "id": "e3-5",
+                    "source": "node-cond-3",
+                    "target": "node-export-false-5",
+                    "sourceHandle": "false",
+                },
+                {"id": "e5-6", "source": "node-export-false-5", "target": "node-notif-false-6"},
+            ],
+        }
+
+        async with AsyncSessionLocal() as session:
+            test_exec_id = f"exec-branching-{uuid.uuid4().hex[:8]}"
+            exec_model = ExecutionModel(
+                id=test_exec_id,
+                workflow_id="demo-workflow-1",
+                status="running",
+                duration_ms=0,
+                started_at=datetime.now(timezone.utc),
+                node_results={},
+            )
+            session.add(exec_model)
+            await session.commit()
+
+            executor = WorkflowExecutor(
+                workflow=test_exec_wf,
+                execution_id=test_exec_id,
+                db_session=session,
+            )
+            run_res = await executor.run()
+
+            assert run_res["status"] == "completed"
+            results = run_res["nodeResults"]
+            assert results["node-trig-1"]["status"] == "completed"
+            assert results["node-trans-2"]["status"] == "completed"
+            assert results["node-cond-3"]["status"] == "completed"
+            assert results["node-cond-3"]["output"]["active_handle"] == "true"
+            
+            # Verify active branch was executed
+            assert results["node-export-true-4"]["status"] == "completed"
+            assert results["node-export-true-4"]["output"]["bytes_written"] > 0
+            
+            # Verify inactive branch and all its descendants were pruned / skipped
+            assert results["node-export-false-5"]["status"] == "skipped"
+            assert results["node-notif-false-6"]["status"] == "skipped"
+            print("  DAG Conditional Routing & Descendant Pruning verified")
+
+        # Verify exported file on disk
+        assert os.path.exists(test_report_file), "Expected exported report to exist on disk"
+        with open(test_report_file, "r", encoding="utf-8") as f:
+            content = f.read()
+            assert "Report for Autonomous AI Systems in Industrial Robotics" in content
+            assert "Score: 85 (Passed)" in content
+        assert not os.path.exists(test_failure_file), "Inactive branch file must not have been created"
+        print(f"  FileExport successfully wrote verified report to disk ({len(content)} bytes)")
+        
+        # Cleanup test file
+        if os.path.exists(test_report_file):
+            os.remove(test_report_file)
+
+        # Test Schedules API toggle and run-now
+        res_toggle = await client.post("/api/v1/schedules/demo-workflow-1/toggle", json={"is_active": True})
+        assert res_toggle.status_code == 200
+        assert res_toggle.json()["isActive"] is True
+        print("  Schedule toggle API endpoint verified")
+
+        res_run_now = await client.post("/api/v1/schedules/demo-workflow-1/run-now")
+        assert res_run_now.status_code == 200
+        assert res_run_now.json()["success"] is True
+        print("  Schedule run-now API endpoint verified")
+        print("  [PASS] Dynamic DAG Routing, Conditional Branching, File Exporter & Automations Scheduler")
+
     print("\n==========================================")
-    print("ALL 17 PRODUCTION ARCHITECTURE TESTS PASSED!")
+    print("ALL 18 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
 
 

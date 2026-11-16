@@ -9,6 +9,7 @@ import { DeployModal } from '@/components/modals/DeployModal';
 // Views matching the 9 design mockups
 import { HomeView } from '@/components/views/HomeView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
+import { AutomationsView } from '@/components/views/AutomationsView';
 import { TemplatesView } from '@/components/views/TemplatesView';
 import { AgentsView } from '@/components/views/AgentsView';
 import { ToolsView } from '@/components/views/ToolsView';
@@ -116,6 +117,7 @@ export default function App() {
 
         {currentView === 'home' && <HomeView />}
         {currentView === 'workflows' && <WorkflowsView />}
+        {currentView === 'automations' && <AutomationsView />}
         {currentView === 'templates' && <TemplatesView />}
         {currentView === 'agents' && <AgentsView />}
         {currentView === 'tools' && <ToolsView />}

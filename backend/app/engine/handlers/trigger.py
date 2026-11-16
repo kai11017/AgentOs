@@ -10,7 +10,7 @@ class TriggerNodeHandler(BaseNodeHandler):
         trigger_type = config.get("triggerType", "manual")
         
         # Initial trigger payload (e.g. email payload or webhook data)
-        return {
+        payload = {
             "status": "triggered",
             "triggerType": trigger_type,
             "sender": config.get("account", "rippika@gmail.com"),
@@ -19,4 +19,8 @@ class TriggerNodeHandler(BaseNodeHandler):
             "receivedAt": "2026-11-13T14:32:12Z",
             "hasAttachments": True,
         }
+        for k, v in config.items():
+            if k not in ["triggerType", "account"]:
+                payload[k] = v
+        return payload
 

@@ -6,6 +6,8 @@ export type AppView =
   | 'home'
   | 'workflows'
   | 'editor'
+  | 'canvas'
+  | 'automations'
   | 'templates'
   | 'agents'
   | 'tools'
@@ -16,6 +18,7 @@ interface UIState {
   // Navigation View
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
+  setActiveView: (view: AppView) => void;
 
   // Selected node for config panel
   selectedNodeId: string | null;
@@ -54,6 +57,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   // Navigation View
   currentView: 'editor',
   setCurrentView: (view) => set({ currentView: view }),
+  setActiveView: (view) => set({ currentView: view }),
 
   // Selected node
   selectedNodeId: null,

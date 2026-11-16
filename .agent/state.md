@@ -7,7 +7,7 @@
 a80a2be
 
 ## Current Milestone
-Phase 6: Visual Expression Picker & Node-Level Step Testing
+Phase 7: Dynamic DAG Routing, Conditional Branching, Local Output Exporters & Automations Manager
 
 ## Completed
 - **Architecture Finalized & Hardened**:
@@ -70,10 +70,19 @@ Phase 6: Visual Expression Picker & Node-Level Step Testing
   - Created `CodeNodeHandler` and `TransformNodeHandler` for standalone python scripts and schema transforms.
   - Added `FieldLabelWithExpression` one-click `{{ fx }}` buttons across all configuration fields in `NodeConfigPanel.tsx`.
   - Enabled "Save as sample for next nodes" storing execution results directly in node data for downstream DAG schema discovery.
+- **Dynamic DAG Routing, Conditional Branching & Local Output Exporters**:
+  - Implemented `IfElseNodeHandler` supporting boolean formulas and comparison operators (`equals`, `not_equals`, `contains`, `not_contains`, `greater_than`, `less_than`, `is_empty`, `not_empty`) returning `active_handle: "true" | "false"`.
+  - Added port-aware edge routing and Kahn's algorithm branch pruning: when a condition evaluates, non-matching edges and their downstream descendants are added to `skipped_nodes` and bypass handler execution in 0ms.
+  - Implemented dynamic runtime expression resolution in `WorkflowExecutor`: resolves `{{ ... }}` expressions in node configs immediately before execution against merged `$json`, `$prev`, `$nodes`, and `$env`.
+  - Created `FileExportNodeHandler` writing workflow reports/data directly to disk (`.md`, `.json`, `.csv`, `.txt`) with automatic directory scaffolding, append/write modes, and templated paths.
+  - Created `NotificationNodeHandler` formatting and dispatching Discord embeds, Slack blocks, and generic HTTP webhooks.
+  - Upgraded React Flow `BaseNode` with distinct color-coded true (emerald) and false (rose) handles and visual branch badges.
+  - Created comprehensive `AutomationsView.tsx` dashboard providing automation metrics, schedule search, active toggle switches (`POST /schedules/{id}/toggle`), and manual "Run Now" execution triggers (`POST /schedules/{id}/run-now`).
+  - Added 1-click zero-setup launchers `start.bat` and `start.ps1` for local desktop execution.
 - **Testing & Verification**:
-  - All 17 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
-  - Frontend TypeScript & Vite production build compiles with 0 errors in 6.73s.
+  - All 18 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
+  - Frontend TypeScript & Vite production build compiles with 0 errors in 22.38s.
 
 ## Next Steps
-1. Task WF-007: Containerized Stack & GitHub CI/CD (`docker-compose.yml`, `.github/workflows/ci.yml`).
-2. Task WF-008: Standalone Desktop Packaging (Tauri v2).
+1. Task WF-008: Standalone Desktop Packaging (Tauri v2) or Native Windows installer.
+2. Production Deployment & Containerized Runbooks.

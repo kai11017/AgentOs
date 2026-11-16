@@ -16,6 +16,8 @@ class WorkflowDAG:
         # In-degree, parents and children maps
         self.parents: Dict[str, Set[str]] = defaultdict(set)
         self.children: Dict[str, Set[str]] = defaultdict(set)
+        self.outgoing_edges: Dict[str, List[Dict]] = defaultdict(list)
+        self.incoming_edges: Dict[str, List[Dict]] = defaultdict(list)
         
         for edge in edges:
             src = edge["source"]
@@ -23,6 +25,8 @@ class WorkflowDAG:
             if src in self.nodes and tgt in self.nodes:
                 self.children[src].add(tgt)
                 self.parents[tgt].add(src)
+                self.outgoing_edges[src].append(edge)
+                self.incoming_edges[tgt].append(edge)
 
     def validate_and_sort(self) -> List[List[str]]:
         """
@@ -58,4 +62,18 @@ class WorkflowDAG:
 
     def get_child_ids(self, node_id: str) -> Set[str]:
         return self.children.get(node_id, set())
+
+    def get_outgoing_edges(self, node_id: str) -> List[Dict]:
+        return self.outgoing_edges.get(node_id, [])
+
+    def get_descendants(self, node_id: str) -> Set[str]:
+        """Returns all descendant node IDs downstream of node_id."""
+        descendants: Set[str] = set()
+        stack = list(self.children.get(node_id, []))
+        while stack:
+            curr = stack.pop()
+            if curr not in descendants:
+                descendants.add(curr)
+                stack.extend(self.children.get(curr, []))
+        return descendants
 

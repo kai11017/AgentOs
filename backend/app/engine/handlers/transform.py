@@ -62,4 +62,5 @@ class TransformNodeHandler(BaseNodeHandler):
             "status": "success",
             "data": output_data,
             "keys_count": len(output_data),
+            **output_data,
         }

@@ -39,6 +39,10 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
   const isTrigger = data.definitionType === 'trigger' || (data.label || '').toLowerCase().includes('trigger');
   const isOutput = data.definitionType === 'output' || (data.label || '').toLowerCase().includes('success');
   const isAgent = category === 'agent' || data.definitionType.includes('agent');
+  const isCondition =
+    data.definitionType === 'if-else' ||
+    data.definitionType === 'condition' ||
+    (data.label || '').toLowerCase().includes('if');
 
   return (
     <div
@@ -161,7 +165,35 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
       </div>
 
       {/* ── Right Source (Output) Handle: Horizontal workflow standard ────────── */}
-      {!isOutput && (
+      {isCondition ? (
+        <>
+          {/* True Handle (Top-Right) */}
+          <Handle
+            id="true"
+            type="source"
+            position={Position.Right}
+            style={{ top: '32%' }}
+            className="!w-3 !h-3 !bg-[#15803d] hover:!bg-[#166534] !border-2 !border-white transition-transform hover:scale-135 shadow-xs"
+            title="True Branch (Yes)"
+          />
+          {/* False Handle (Bottom-Right) */}
+          <Handle
+            id="false"
+            type="source"
+            position={Position.Right}
+            style={{ top: '68%' }}
+            className="!w-3 !h-3 !bg-[#dc2626] hover:!bg-[#b91c1c] !border-2 !border-white transition-transform hover:scale-135 shadow-xs"
+            title="False Branch (No)"
+          />
+          {/* Visual indicators on node card */}
+          <div className="absolute right-3.5 top-[26%] text-[9px] font-bold font-mono text-[#15803d] pointer-events-none select-none">
+            True
+          </div>
+          <div className="absolute right-3.5 top-[62%] text-[9px] font-bold font-mono text-[#dc2626] pointer-events-none select-none">
+            False
+          </div>
+        </>
+      ) : !isOutput ? (
         <Handle
           id="output"
           type="source"
@@ -169,7 +201,7 @@ function BaseNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
           className="!w-3 !h-3 !bg-[#2e664c] hover:!bg-[#15803d] !border-2 !border-white transition-transform hover:scale-135 shadow-xs"
           title="Output flow"
         />
-      )}
+      ) : null}
 
       {/* ── Bottom Sub-Handle for Agent Tools & Multi-model Connections ──────── */}
       {isAgent && (

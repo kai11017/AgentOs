@@ -16,6 +16,10 @@ from backend.app.engine.handlers.approval import ApprovalNodeHandler
 from backend.app.engine.handlers.knowledge import KnowledgeNodeHandler
 from backend.app.engine.handlers.code import CodeNodeHandler
 from backend.app.engine.handlers.transform import TransformNodeHandler
+from backend.app.engine.handlers.condition import IfElseNodeHandler
+from backend.app.engine.handlers.file_export import FileExportNodeHandler
+from backend.app.engine.handlers.notification import NotificationNodeHandler
+from backend.app.engine.expressions import ExpressionEvaluator
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.api.v1.credentials import resolve_credential
 
@@ -46,6 +50,17 @@ HANDLERS = {
     "variable": TransformNodeHandler(),
     "input": TransformNodeHandler(),
     "merge": TransformNodeHandler(),
+    "if-else": IfElseNodeHandler(),
+    "condition": IfElseNodeHandler(),
+    "switch": IfElseNodeHandler(),
+    "file-export": FileExportNodeHandler(),
+    "filesystem": FileExportNodeHandler(),
+    "file-writer": FileExportNodeHandler(),
+    "export": FileExportNodeHandler(),
+    "notification": NotificationNodeHandler(),
+    "webhook-out": NotificationNodeHandler(),
+    "slack": NotificationNodeHandler(),
+    "discord": NotificationNodeHandler(),
 }
 
 class WorkflowExecutor:
@@ -71,6 +86,7 @@ class WorkflowExecutor:
         # In-memory execution state map { [nodeId]: output_dict }
         self.node_outputs: Dict[str, Any] = {}
         self.node_results: Dict[str, Any] = {}
+        self.skipped_nodes: set = set()
         self.seq_counter = 0
 
     async def emit_log(self, message: str, level: str = "info", node_id: Optional[str] = None):
@@ -114,6 +130,25 @@ class WorkflowExecutor:
         if self.cancel_token.is_set():
             raise asyncio.CancelledError(f"Execution cancelled before executing node: {label}")
 
+        # Check if node was pruned by an upstream conditional branch
+        if node_id in self.skipped_nodes:
+            self.node_results[node_id] = {
+                "status": "skipped",
+                "output": None,
+                "durationMs": 0,
+            }
+            await self.emit_log(
+                f"Skipping node: {label} (Conditional branch not active)",
+                level="info",
+                node_id=node_id,
+            )
+            # Cascade skip to any downstream children that have no other active parents
+            for cid in dag.get_child_ids(node_id):
+                active_parents = [p for p in dag.get_parent_ids(cid) if p not in self.skipped_nodes and p != node_id]
+                if not active_parents:
+                    self.skipped_nodes.add(cid)
+            return {"status": "skipped"}
+
         # Assemble merge semantics & upstream context
         parent_ids = dag.get_parent_ids(node_id)
         parent_outputs = [self.node_outputs[pid] for pid in parent_ids if pid in self.node_outputs]
@@ -123,6 +158,8 @@ class WorkflowExecutor:
         for po in parent_outputs:
             if isinstance(po, dict):
                 merged_input.update(po)
+                if isinstance(po.get("data"), dict):
+                    merged_input.update(po["data"])
 
         prev_output = parent_outputs[-1] if parent_outputs else {}
         context = {
@@ -132,6 +169,17 @@ class WorkflowExecutor:
             "execution_id": self.execution_id,
             "emit_log": lambda msg, level="info": self.emit_log(msg, level=level, node_id=node_id),
             "get_credential": lambda cred_name: resolve_credential(cred_name, self.db),
+        }
+
+        # Dynamically resolve {{ ... }} expressions in configuration before execution
+        raw_config = node.get("data", {}).get("config", {})
+        resolved_config = ExpressionEvaluator.resolve_config(raw_config, context)
+        node_to_exec = {
+            **node,
+            "data": {
+                **node.get("data", {}),
+                "config": resolved_config,
+            },
         }
 
         # Dispatch handler
@@ -147,7 +195,7 @@ class WorkflowExecutor:
             await self.vram_semaphore.acquire()
 
         try:
-            output = await handler.execute(node, context)
+            output = await handler.execute(node_to_exec, context)
             duration_ms = int((time.time() - start_time) * 1000)
 
             # Checkpoint node completion in memory and DB
@@ -163,6 +211,27 @@ class WorkflowExecutor:
                 level="info",
                 node_id=node_id,
             )
+
+            # Conditional Branching: Prune inactive outgoing edges and their descendant DAG paths
+            if node_type in ["if-else", "condition", "switch"]:
+                active_handle = str(output.get("active_handle", "true")).lower()
+                outgoing_edges = dag.get_outgoing_edges(node_id)
+                for edge in outgoing_edges:
+                    src_handle = str(
+                        edge.get("sourceHandle")
+                        or edge.get("data", {}).get("handle")
+                        or edge.get("label", "")
+                    ).lower()
+                    if src_handle and src_handle != active_handle:
+                        inactive_target = edge["target"]
+                        self.skipped_nodes.add(inactive_target)
+                        self.skipped_nodes.update(dag.get_descendants(inactive_target))
+                        await self.emit_log(
+                            f"[{label}] Branch condition selected '{active_handle}'. Pruning inactive branch ('{src_handle}') to node '{inactive_target}'.",
+                            level="info",
+                            node_id=node_id,
+                        )
+
             return output
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)

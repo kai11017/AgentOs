@@ -445,6 +445,19 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
     return this.request('/schedules/sync', { method: 'POST' });
   }
 
+  async toggleWorkflowSchedule(workflowId: string, isActive?: boolean): Promise<any> {
+    return this.request(`/schedules/${workflowId}/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+
+  async runWorkflowScheduleNow(workflowId: string): Promise<any> {
+    return this.request(`/schedules/${workflowId}/run-now`, {
+      method: 'POST',
+    });
+  }
+
   // ─── Secure Credential Vault ────────────────────────────────────────────────
 
   async listCredentials(): Promise<CredentialItem[]> {

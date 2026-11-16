@@ -314,3 +314,56 @@
   status:
     - completed
   summary: "Successfully implemented the Visual Expression Builder & Variable Picker and Isolated Node Step Testing Runner. Users can visually browse upstream DAG variables, preview live evaluation results, run isolated single-node step tests with custom input, inspect execution logs, and propagate sample outputs to downstream nodes. All 17 backend tests and frontend Vite builds passed with 0 errors."
+
+- task_id: WF-007
+  title: "Dynamic DAG Routing, Conditional Branching, Local Output Exporters & Automations Manager"
+  description: "Implement port-aware conditional DAG branching (IfElseNodeHandler), cascading inactive branch pruning in Kahn's algorithm, live dynamic expression resolution in node configs, disk file export (FileExportNodeHandler), outbound webhook notifications (NotificationNodeHandler), visual dual-port condition handles on canvas nodes, and a dedicated background Automations & Schedules dashboard."
+  goal: "Enable complete local automation workflows with decision branching, automated disk reports/exports, notifications, and scheduled background workflow management."
+  scope:
+    - backend/app/engine/handlers/condition.py
+    - backend/app/engine/handlers/file_export.py
+    - backend/app/engine/handlers/notification.py
+    - backend/app/engine/dag.py
+    - backend/app/engine/executor.py
+    - backend/app/engine/handlers/transform.py
+    - backend/app/engine/handlers/trigger.py
+    - backend/app/api/v1/schedules.py
+    - backend/tests/run_tests.py
+    - frontend/src/api/http-adapter.ts
+    - frontend/src/nodes/base/BaseNode.tsx
+    - frontend/src/components/views/AutomationsView.tsx
+    - frontend/src/stores/ui-store.ts
+    - frontend/src/components/layout/AppSidebar.tsx
+    - frontend/src/App.tsx
+  constraints:
+    - Clean-room architectural design.
+    - Zero breaking changes to existing DAG topology or wave execution.
+    - Inactive branches must prune all downstream descendants immediately.
+  acceptance_criteria:
+    - IfElseNodeHandler evaluates both raw boolean formulas and comparison operators ('equals', 'greater_than', 'contains', etc.) and outputs 'true' or 'false' handle.
+    - WorkflowDAG tracks outgoing and incoming edges per node and computes downstream descendants.
+    - WorkflowExecutor resolves node config expressions before execution and prunes non-matching outgoing branches and descendants into skipped_nodes.
+    - FileExportNodeHandler writes files to disk (.md, .json, .csv, .txt) with parent directory auto-creation and expression resolution in path and content.
+    - NotificationNodeHandler formats Discord embeds, Slack blocks, and generic HTTP POST webhooks.
+    - BaseNode displays distinct green 'true' and red 'false' handles and badges for condition nodes.
+    - AutomationsView provides a full dashboard with summary metrics, active toggles, and 'Run Now' execution triggers.
+    - All 18 backend architecture tests pass.
+    - Frontend TypeScript and Vite build passes with 0 errors.
+  risk_level: low
+  created_at: 2026-11-16T18:40:00Z
+  started_at: 2026-11-16T18:45:00Z
+  completed_at: 2026-11-16T19:05:00Z
+  agent: "Antigravity Assistant"
+  model: "Gemini 3.8 Flash (High)"
+  prompt_version: "2.0"
+  base_commit: "36521df"
+  branch: "agent/wf-007-dag-routing-exporters-scheduler"
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  summary: "Successfully implemented Dynamic DAG Routing with conditional branching, cascading inactive branch pruning in Kahn's algorithm, live config expression resolution, disk file export, outbound webhooks, canvas condition handles, and an Automations & Schedules dashboard. All 18 backend architecture tests and frontend Vite builds passed with 0 errors."
