@@ -2,7 +2,7 @@ import React from 'react';
 import { useWorkflowStore } from '@/stores/workflow-store';
 import { useExecutionStore } from '@/stores/execution-store';
 import { useUIStore } from '@/stores/ui-store';
-import { Play, Square, Share2 } from 'lucide-react';
+import { Play, Square, Share2, LayoutTemplate } from 'lucide-react';
 
 export const WorkflowToolbar: React.FC = () => {
   const currentWorkflow = useWorkflowStore((s) => s.currentWorkflow);
@@ -74,12 +74,21 @@ export const WorkflowToolbar: React.FC = () => {
         </button>
       </div>
 
-      {/* Right Actions: Share & Run Workflow */}
-      <div className="flex items-center gap-3">
+      {/* Right Actions: Templates, Share & Run Workflow */}
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => setCurrentView('templates')}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#ded8cc] hover:border-[#15803d]/50 text-[#0e2118] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+        >
+          <LayoutTemplate className="w-3.5 h-3.5 stroke-[2] text-[#15803d]" />
+          <span>Templates</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setDeployModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white border border-[#ded8cc] hover:border-[#15803d]/40 text-[#0e2118] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#ded8cc] hover:border-[#15803d]/40 text-[#0e2118] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
         >
           <Share2 className="w-3.5 h-3.5 stroke-[2]" />
           <span>Share</span>

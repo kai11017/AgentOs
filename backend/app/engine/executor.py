@@ -14,6 +14,7 @@ from backend.app.engine.handlers.database import DatabaseNodeHandler
 from backend.app.engine.handlers.output import OutputNodeHandler
 from backend.app.engine.handlers.approval import ApprovalNodeHandler
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
+from backend.app.api.v1.credentials import resolve_credential
 
 # Handler Dispatch Registry
 HANDLERS = {
@@ -114,6 +115,7 @@ class WorkflowExecutor:
             "$nodes": self.node_outputs,
             "execution_id": self.execution_id,
             "emit_log": lambda msg, level="info": self.emit_log(msg, level=level, node_id=node_id),
+            "get_credential": lambda cred_name: resolve_credential(cred_name, self.db),
         }
 
         # Dispatch handler

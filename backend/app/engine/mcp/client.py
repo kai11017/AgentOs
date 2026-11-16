@@ -60,6 +60,7 @@ class MCPClient:
                 stderr=asyncio.subprocess.PIPE,
             )
             self._read_task = asyncio.create_task(self._listen_stdout())
+            self._err_task = asyncio.create_task(self._listen_stderr())
 
             # Perform MCP Handshake: initialize
             init_res = await self._send_request("initialize", {
@@ -114,13 +115,26 @@ class MCPClient:
                 logger.debug(f"MCP stdout read loop error: {ex}")
                 break
 
+    async def _listen_stderr(self):
+        while self.process and self.process.stderr and not self.process.stderr.at_eof():
+            try:
+                line = await self.process.stderr.readline()
+                if not line:
+                    break
+                err_msg = line.decode("utf-8", errors="replace").strip()
+                if err_msg:
+                    logger.debug(f"[{self.name} MCP stderr] {err_msg}")
+            except Exception:
+                break
+
     async def _send_request(self, method: str, params: Dict[str, Any], timeout: float = 10.0) -> Any:
         if not self.process or not self.process.stdin:
             raise RuntimeError(f"MCP server '{self.name}' is not running.")
 
         self._request_id += 1
         req_id = self._request_id
-        future = asyncio.get_event_loop().create_future()
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
         self._pending_responses[req_id] = future
 
         msg = {

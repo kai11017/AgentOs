@@ -249,9 +249,100 @@ async def main():
         assert len(imported_wf["nodes"]) >= 1
         print("  [PASS] Workflow .agentflow.json Export & Import")
 
+        # ─── 13. Testing Encrypted Credential Vault ───────────────────────
+        print("\n--- 13. Testing Encrypted Credential Vault ---")
+        from backend.app.api.v1.credentials import resolve_credential
+        from backend.app.core.database import AsyncSessionLocal
+        from backend.app.engine.mcp.manager import global_mcp_manager as mcp_manager
+        
+        res_cred = await client.post("/api/v1/credentials", json={
+            "name": "test_vault_gemini_key",
+            "credential_type": "gemini_api_key",
+            "value": "AIzaSySecretVaultTestKey9999",
+            "description": "Integration Test Key",
+        })
+        assert res_cred.status_code == 201
+        cred_data = res_cred.json()
+        assert cred_data["name"] == "test_vault_gemini_key"
+        assert cred_data["masked_preview"] == "••••••••9999"
+        cred_id = cred_data["id"]
+
+        # Verify in list
+        res_list = await client.get("/api/v1/credentials")
+        assert res_list.status_code == 200
+        creds_list = res_list.json()
+        assert any(c["id"] == cred_id for c in creds_list)
+
+        # Verify decryption helper
+        async with AsyncSessionLocal() as db_session:
+            decrypted_val = await resolve_credential("test_vault_gemini_key", db_session)
+            assert decrypted_val == "AIzaSySecretVaultTestKey9999"
+
+            # Delete credential
+            res_del = await client.delete(f"/api/v1/credentials/{cred_id}")
+            assert res_del.status_code == 200
+            after_del = await resolve_credential("test_vault_gemini_key", db_session)
+            assert after_del is None
+        print("  [PASS] Encrypted Credential Vault (Fernet AES + Masking + Decryption)")
+
+        # ─── 14. Testing Bundled Local Python MCP Servers ─────────────────
+        print("\n--- 14. Testing Bundled Local Python MCP Servers ---")
+        # Test Filesystem MCP Server
+        fs_connected = await mcp_manager.connect_server("filesystem")
+        assert fs_connected is True
+        fs_client = mcp_manager._clients["filesystem"]
+        fs_tool_names = [t["name"] for t in fs_client.tools]
+        assert "list_files" in fs_tool_names
+        assert "read_file" in fs_tool_names
+        assert "search_files" in fs_tool_names
+
+        # Call list_files on filesystem server
+        fs_res = await fs_client.call_tool("list_files", {"directory": "."})
+        assert "result" in fs_res or "raw" in fs_res or "content" in fs_res
+        await mcp_manager.disconnect_server("filesystem")
+
+        # Test System Info MCP Server
+        sys_connected = await mcp_manager.connect_server("system_info")
+        assert sys_connected is True
+        sys_client = mcp_manager._clients["system_info"]
+        sys_tool_names = [t["name"] for t in sys_client.tools]
+        assert "get_system_info" in sys_tool_names
+        assert "get_disk_space" in sys_tool_names
+
+        sys_res = await sys_client.call_tool("get_system_info", {})
+        assert sys_res is not None
+        await mcp_manager.disconnect_server("system_info")
+        print("  [PASS] Bundled Stdio Python MCP Servers (Filesystem & System Info)")
+
+        # ─── 15. Testing Workflow Template Library & Instantiation ───────
+        print("\n--- 15. Testing Workflow Template Library & Instantiation ---")
+        res_templates = await client.get("/api/v1/templates")
+        assert res_templates.status_code == 200
+        tpl_list = res_templates.json()
+        assert len(tpl_list) >= 4
+        tpl_ids = [t["id"] for t in tpl_list]
+        assert "tpl-autonomous-researcher" in tpl_ids
+        assert "tpl-scheduled-digest" in tpl_ids
+        assert "tpl-human-approval" in tpl_ids
+
+        # Instantiate a template
+        res_inst = await client.post("/api/v1/templates/tpl-autonomous-researcher/instantiate")
+        assert res_inst.status_code == 201
+        inst_data = res_inst.json()
+        inst_wf_id = inst_data["workflow_id"]
+
+        # Verify instantiated workflow exists with nodes and edges
+        res_get_wf = await client.get(f"/api/v1/workflows/{inst_wf_id}")
+        assert res_get_wf.status_code == 200
+        inst_wf = res_get_wf.json()
+        assert len(inst_wf["nodes"]) == 4
+        assert len(inst_wf["edges"]) == 3
+        print(f"  [PASS] Template Instantiation (Created '{inst_wf['name']}' with {len(inst_wf['nodes'])} nodes)")
+
     print("\n==========================================")
-    print("ALL 12 PRODUCTION ARCHITECTURE TESTS PASSED!")
+    print("ALL 15 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

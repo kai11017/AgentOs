@@ -1,13 +1,13 @@
 # Current State
 
 ## Last Updated
-2026-11-15
+2026-11-16
 
 ## Current Commit
-9998bf3
+a80a2be
 
 ## Current Milestone
-End-to-End Product Integration & Live Local Model Execution
+Phase 4: Encrypted Credential Vault, Bundled Python MCP Servers & Workflow Template Library
 
 ## Completed
 - **Architecture Finalized & Hardened**:
@@ -41,10 +41,24 @@ End-to-End Product Integration & Live Local Model Execution
   - **Human-in-the-Loop Approval Node**: `ApprovalNodeHandler` pausing execution on `asyncio.Future`, with UI review banner and operator approve/reject endpoints (`/api/v1/executions/{id}/approve`, `/reject`).
   - **Cron & Interval Background Scheduler**: APScheduler integration with `/api/v1/schedules` for recurring automated executions.
   - **Workflow JSON Export & Import**: `.agentflow.json` serialization with collision-free node/edge ID remapping.
+- **Encrypted Credential Vault**:
+  - Created `backend/app/core/security.py` featuring AES-128-CBC + HMAC-SHA256 authenticated encryption (`Fernet`) with PBKDF2 key derivation.
+  - Implemented `CredentialModel` and REST API endpoints (`/api/v1/credentials`) with automated secret masking (`••••••••abcd`) and runtime decryption resolution (`resolve_credential`).
+  - Added interactive Credential Management UI in `SettingsView.tsx` with modal for adding, masking, and deleting credentials.
+- **Bundled Standalone Python MCP Servers**:
+  - Created zero-dependency, local Python MCP servers:
+    - `mcp_tools/filesystem/server.py`: Safe workspace filesystem operations (`list_files`, `read_file`, `write_file`, `search_files`).
+    - `mcp_tools/system_info/server.py`: Hardware specs, storage telemetry, and safe TCP socket reachability diagnostics.
+  - Pre-registered into `MCPManager` using `sys.executable` for 100% offline, zero-NPM execution.
+- **Workflow Template Library**:
+  - Created `backend/app/templates/registry.py` with 4 industrial templates (Autonomous Research, Scheduled Health Digest, Human-in-the-Loop Approval, Code Security Audit).
+  - Implemented `/api/v1/templates` and `/api/v1/templates/{id}/instantiate` with unique node/edge UUID generation.
+  - Wired into `TemplatesView.tsx` with category filters, hero banner, and 1-click instantiation directly into the React Flow editor canvas.
+  - Added "Templates" quick launcher button in `WorkflowToolbar.tsx`.
 - **Testing & Verification**:
-  - All 12 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
-  - Frontend TypeScript & Vite production build compiles with 0 errors.
+  - All 15 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
+  - Frontend TypeScript & Vite production build compiles with 0 errors in 14.20s.
 
 ## Next Steps
-1. Create one-click local startup launcher scripts (`start.bat` / `start.ps1`) for frictionless execution.
-2. Package desktop executable or containerized multi-service deployment.
+1. Package standalone desktop application (Tauri or Electron).
+2. Add community integration nodes (Slack/Discord Webhooks, Google Sheets, local vector store ChromaDB/FAISS).

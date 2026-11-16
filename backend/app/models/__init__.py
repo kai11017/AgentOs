@@ -1,5 +1,6 @@
 from backend.app.models.workflow import WorkflowModel, WorkflowNodeModel, WorkflowEdgeModel
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
+from backend.app.models.credential import CredentialModel
 
 __all__ = [
     "WorkflowModel",
@@ -7,5 +8,6 @@ __all__ = [
     "WorkflowEdgeModel",
     "ExecutionModel",
     "ExecutionLogModel",
+    "CredentialModel",
 ]
 

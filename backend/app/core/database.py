@@ -15,6 +15,8 @@ def can_reach_host(url: str, timeout: float = 0.5) -> bool:
     try:
         parsed = urlparse(url)
         host = parsed.hostname or "127.0.0.1"
+        if host == "localhost":
+            host = "127.0.0.1"
         port = parsed.port or 5432
         with socket.create_connection((host, port), timeout=timeout):
             return True
@@ -22,7 +24,7 @@ def can_reach_host(url: str, timeout: float = 0.5) -> bool:
         return False
 
 # Determine active database URL
-primary_url = settings.DATABASE_URL
+primary_url = settings.DATABASE_URL.replace("@localhost:", "@127.0.0.1:")
 active_url = settings.SQLITE_FALLBACK_URL
 
 if "postgresql" in primary_url:

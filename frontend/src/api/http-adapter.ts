@@ -443,6 +443,65 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
   async syncSchedules(): Promise<any> {
     return this.request('/schedules/sync', { method: 'POST' });
   }
+
+  // ─── Secure Credential Vault ────────────────────────────────────────────────
+
+  async listCredentials(): Promise<CredentialItem[]> {
+    return this.request('/credentials');
+  }
+
+  async createCredential(payload: {
+    name: string;
+    credential_type: string;
+    value: string;
+    description?: string;
+    metadata?: Record<string, any>;
+  }): Promise<CredentialItem> {
+    return this.request('/credentials', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteCredential(credentialId: string): Promise<any> {
+    return this.request(`/credentials/${credentialId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ─── Prebuilt Workflow Templates ────────────────────────────────────────────
+
+  async listTemplates(): Promise<TemplateItemSummary[]> {
+    return this.request('/templates');
+  }
+
+  async instantiateTemplate(templateId: string): Promise<{ status: string; workflow_id: string; name: string }> {
+    return this.request(`/templates/${templateId}/instantiate`, {
+      method: 'POST',
+    });
+  }
+}
+
+export interface CredentialItem {
+  id: string;
+  name: string;
+  credential_type: string;
+  masked_preview: string;
+  description: string;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TemplateItemSummary {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  icon: string;
+  tags: string[];
+  node_count: number;
+  edge_count: number;
 }
 
 export const httpApiAdapter = new HttpApiAdapter();

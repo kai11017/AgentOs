@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 from typing import Dict, Any, List, Optional
 from backend.app.engine.mcp.client import MCPClient, MCPToolWrapper
 from backend.app.engine.tools.registry import global_tool_registry
@@ -8,20 +10,33 @@ logger = logging.getLogger("agentos.mcp.manager")
 class MCPManager:
     def __init__(self):
         self._clients: Dict[str, MCPClient] = {}
+        
+        fs_server_path = os.path.abspath(os.path.join(os.getcwd(), "mcp_tools", "filesystem", "server.py"))
+        sys_server_path = os.path.abspath(os.path.join(os.getcwd(), "mcp_tools", "system_info", "server.py"))
+
         self._server_configs: Dict[str, Dict[str, Any]] = {
             "filesystem": {
                 "name": "filesystem",
                 "label": "Local Filesystem MCP",
-                "description": "Secure file operations (read, write, list, inspect directory) via MCP protocol.",
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+                "description": "Secure file operations (list, read, write, search) within local workspace sandbox via MCP.",
+                "command": sys.executable,
+                "args": ["-u", fs_server_path],
+                "enabled": False,
+                "status": "disconnected",
+            },
+            "system_info": {
+                "name": "system_info",
+                "label": "System Diagnostics MCP",
+                "description": "Local PC hardware specs, disk usage, and safe socket reachability diagnostics.",
+                "command": sys.executable,
+                "args": ["-u", sys_server_path],
                 "enabled": False,
                 "status": "disconnected",
             },
             "memory": {
                 "name": "memory",
                 "label": "Knowledge Graph Memory MCP",
-                "description": "Persistent graph memory for entities, relations, and cross-workflow recall.",
+                "description": "Persistent graph memory for entities, relations, and cross-workflow recall (Requires Node/npx).",
                 "command": "npx",
                 "args": ["-y", "@modelcontextprotocol/server-memory"],
                 "enabled": False,
@@ -30,7 +45,7 @@ class MCPManager:
             "github": {
                 "name": "github",
                 "label": "GitHub MCP",
-                "description": "Interact with repositories, read PRs, create issues, and manage commits.",
+                "description": "Interact with repositories, read PRs, create issues, and manage commits (Requires Node/npx).",
                 "command": "npx",
                 "args": ["-y", "@modelcontextprotocol/server-github"],
                 "enabled": False,

@@ -1,87 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@/stores/ui-store';
 import { useWorkflowStore } from '@/stores/workflow-store';
-import { Search } from 'lucide-react';
+import { httpApiAdapter, TemplateItemSummary } from '@/api/http-adapter';
+import { Search, Sparkles, Layers, ArrowRight, Loader2 } from 'lucide-react';
 
-interface TemplateItem {
-  id: string;
-  initial: string;
-  initialColor: { bg: string; text: string };
-  title: string;
-  category: 'AI' | 'Productivity' | 'Development' | 'Marketing';
-  description: string;
-}
-
-const TEMPLATES: TemplateItem[] = [
+const FALLBACK_TEMPLATES: TemplateItemSummary[] = [
   {
-    id: 't-1',
-    initial: 'R',
-    initialColor: { bg: '#f1ebfc', text: '#6b3fc9' },
-    title: 'Research Assistant',
-    category: 'AI',
-    description: 'Summarize topics and send a report.',
+    id: 'tpl-autonomous-researcher',
+    name: 'Autonomous Web & Market Research Agent',
+    category: 'Autonomous AI',
+    description: 'Multi-turn autonomous agent that searches DuckDuckGo, extracts webpage contents, synthesizes structured market intelligence, and stores findings into persistent memory.',
+    icon: 'Brain',
+    tags: ['AI Agent', 'DuckDuckGo', 'Web Scraping', 'Persistent Memory'],
+    node_count: 4,
+    edge_count: 3,
   },
   {
-    id: 't-2',
-    initial: 'E',
-    initialColor: { bg: '#fef1e6', text: '#b85816' },
-    title: 'Email Reporter',
-    category: 'Productivity',
-    description: 'Track events and notify your team.',
+    id: 'tpl-scheduled-digest',
+    name: 'Scheduled Daily System & Security Digest',
+    category: 'Scheduled Automations',
+    description: 'Runs on a recurring cron schedule (every morning) to collect local PC hardware metrics, disk storage trends, and generate an executive health digest.',
+    icon: 'Clock',
+    tags: ['Cron', 'Scheduler', 'System Diagnostics', 'Local MCP'],
+    node_count: 3,
+    edge_count: 2,
   },
   {
-    id: 't-3',
-    initial: 'D',
-    initialColor: { bg: '#e5f3fa', text: '#16719e' },
-    title: 'Data Analyzer',
-    category: 'Development',
-    description: 'Visualize data and spot trends.',
+    id: 'tpl-human-approval',
+    name: 'Human-in-the-Loop Approval & Action Gate',
+    category: 'Human-in-the-Loop',
+    description: 'Receives an external payload, drafts a proposed execution plan with an autonomous AI agent, pauses at an interactive operator review gate, and resumes only upon human authorization.',
+    icon: 'ShieldAlert',
+    tags: ['Human-in-the-Loop', 'Safety Gate', 'Webhook', 'Approval'],
+    node_count: 5,
+    edge_count: 4,
   },
   {
-    id: 't-4',
-    initial: 'S',
-    initialColor: { bg: '#fdf2dd', text: '#966014' },
-    title: 'Social Media Post',
-    category: 'Marketing',
-    description: 'Generate and publish posts.',
-  },
-  {
-    id: 't-5',
-    initial: 'W',
-    initialColor: { bg: '#e3f2eb', text: '#1e6b47' },
-    title: 'Web Search Agent',
-    category: 'AI',
-    description: 'Real-time info with source links.',
-  },
-  {
-    id: 't-6',
-    initial: 'P',
-    initialColor: { bg: '#f5f2eb', text: '#5c6861' },
-    title: 'Personal Assistant',
-    category: 'Productivity',
-    description: 'Automate your daily tasks.',
+    id: 'tpl-code-security',
+    name: 'Sandboxed Python Code Review & Linter',
+    category: 'Developer Tools',
+    description: 'Inspects Python snippets, runs sandboxed AST validation, calculates code complexity, and verifies unit test outputs safely.',
+    icon: 'FileCode',
+    tags: ['Code Review', 'Python Sandbox', 'AST', 'Security'],
+    node_count: 3,
+    edge_count: 2,
   },
 ];
 
 export const TemplatesView: React.FC = () => {
   const setCurrentView = useUIStore((s) => s.setCurrentView);
+  const loadWorkflows = useWorkflowStore((s) => s.loadWorkflows);
   const loadWorkflow = useWorkflowStore((s) => s.loadWorkflow);
 
+  const [templates, setTemplates] = useState<TemplateItemSummary[]>(FALLBACK_TEMPLATES);
+  const [loading, setLoading] = useState(false);
+  const [instantiatingId, setInstantiatingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  const categories = ['All', 'Productivity', 'AI', 'Development', 'Marketing'];
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        setLoading(true);
+        const res = await httpApiAdapter.listTemplates();
+        if (res && res.length > 0) {
+          setTemplates(res);
+        }
+      } catch (err) {
+        console.warn('Using fallback templates:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTemplates();
+  }, []);
 
-  const handleUseTemplate = async () => {
-    await loadWorkflow('demo-workflow-1');
-    setCurrentView('editor');
+  const categories = ['All', 'Autonomous AI', 'Scheduled Automations', 'Human-in-the-Loop', 'Developer Tools'];
+
+  const handleUseTemplate = async (templateId: string) => {
+    try {
+      setInstantiatingId(templateId);
+      const res = await httpApiAdapter.instantiateTemplate(templateId);
+      await loadWorkflows();
+      if (res?.workflow_id) {
+        await loadWorkflow(res.workflow_id);
+      }
+      setCurrentView('editor');
+    } catch (err) {
+      console.error('Failed to instantiate template:', err);
+      // Fallback
+      await loadWorkflow('demo-workflow-1');
+      setCurrentView('editor');
+    } finally {
+      setInstantiatingId(null);
+    }
   };
 
-  const filtered = TEMPLATES.filter((t) => {
+  const filtered = templates.filter((t) => {
     const matchesCat = selectedCategory === 'All' || t.category === selectedCategory;
     const matchesQuery =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.description.toLowerCase().includes(search.toLowerCase());
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase()) ||
+      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()));
     return matchesCat && matchesQuery;
   });
 
@@ -91,37 +111,40 @@ export const TemplatesView: React.FC = () => {
         {/* Header & Search */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-[#19221d] tracking-tight">
-              Templates
+            <h1 className="text-2xl font-black text-[#19221d] tracking-tight flex items-center gap-2.5">
+              <span>Template Library</span>
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#15803d] border border-[#86efac]/80">
+                {templates.length} Ready
+              </span>
             </h1>
             <p className="text-xs text-[#6e7d75] mt-1">
-              Start from a pre-built workflow and make it yours.
+              Production-ready multi-node blueprints. Instantiate into your canvas with a single click.
             </p>
           </div>
 
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-[#86948d]" />
+          <div className="relative w-80">
+            <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#86948d]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search templates"
-              className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#e4ded3] rounded-xl outline-none focus:border-[#1e4d3a] text-[#19221d]"
+              placeholder="Search templates by tag, tool, or name..."
+              className="w-full pl-10 pr-4 py-2.5 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] shadow-2xs"
             />
           </div>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {categories.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedCategory === cat
-                  ? 'bg-[#19221d] text-white shadow-2xs'
-                  : 'bg-white border border-[#e4ded3] text-[#5c6861] hover:bg-[#f5f2eb]'
+                  ? 'bg-[#0e2118] text-white shadow-2xs'
+                  : 'bg-white border border-[#ded8cc] text-[#5c6861] hover:bg-[#ebe7dc]'
               }`}
             >
               {cat}
@@ -129,83 +152,105 @@ export const TemplatesView: React.FC = () => {
           ))}
         </div>
 
-        {/* Featured Hero Banner Card (Screenshot 5) */}
-        <div className="bg-gradient-to-r from-[#0a1c14] to-[#143928] text-white rounded-3xl p-7 shadow-lg border border-[#1d4c38] flex items-center justify-between">
+        {/* Featured Hero Banner Card */}
+        <div className="bg-gradient-to-r from-[#0e2118] via-[#153424] to-[#1e4d35] text-white rounded-3xl p-7 shadow-lg border border-[#2b5a41] flex items-center justify-between">
           <div className="space-y-2 max-w-xl">
-            <span className="inline-block text-[10px] font-black uppercase tracking-wider text-[#f59e0b] bg-[#1d4c38] border border-[#f59e0b]/30 px-2.5 py-0.5 rounded-md shadow-2xs">
-              Featured
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#f59e0b] bg-[#224430] border border-[#f59e0b]/40 px-2.5 py-0.5 rounded-md shadow-2xs">
+                <Sparkles className="w-3 h-3 fill-current" />
+                Featured Autonomous Agent
+              </span>
+              <span className="text-[11px] font-semibold text-[#86efac]">
+                4 Nodes • Hybrid Gemini/Qwen
+              </span>
+            </div>
             <h2 className="font-display text-xl font-black tracking-tight text-white">
-              Research Assistant
+              Autonomous Web & Market Research Agent
             </h2>
-            <p className="font-sans text-xs text-[#b0c8bb] leading-relaxed">
-              Reads incoming email, researches the web, then reports to Notion. 5 nodes, about 8s per run.
+            <p className="font-sans text-xs text-[#b8d4c4] leading-relaxed">
+              Autonomously explores live web sources using DuckDuckGo, parses HTML bodies with SSRF protection, extracts key intelligence, and checkpoints findings into persistent memory.
             </p>
           </div>
           <button
             type="button"
-            onClick={handleUseTemplate}
-            className="px-5 py-2.5 bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#d97706] hover:to-[#b45309] text-white font-black text-xs rounded-xl shadow-[0_2px_12px_rgba(245,158,11,0.4)] transition-all shrink-0 cursor-pointer"
+            disabled={instantiatingId !== null}
+            onClick={() => handleUseTemplate('tpl-autonomous-researcher')}
+            className="flex items-center gap-2 px-5 py-3 bg-[#f59e0b] hover:bg-[#d97706] active:bg-[#b45309] text-[#0e2118] font-black text-xs rounded-xl shadow-[0_2px_12px_rgba(245,158,11,0.45)] transition-all shrink-0 cursor-pointer disabled:opacity-50"
           >
-            Use template
+            {instantiatingId === 'tpl-autonomous-researcher' ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#0e2118]" />
+            ) : (
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            )}
+            <span>Use Blueprint</span>
           </button>
         </div>
 
-        {/* 3-Column Grid of Template Cards (Screenshot 5) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl border border-[#ded8cc] p-5 shadow-[0_2px_8px_rgba(15,35,25,0.04)] flex flex-col justify-between space-y-4 hover:shadow-md hover:border-[#15803d]/40 transition-all"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center font-display font-black text-xs shrink-0 shadow-2xs"
-                    style={{
-                      backgroundColor: item.initialColor.bg,
-                      color: item.initialColor.text,
-                    }}
-                  >
-                    {item.initial}
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-[#19221d]">
-                      {item.title}
-                    </h3>
-                    <span className="text-[11px] text-[#78857e]">
+        {/* 2x2 or 3-Column Grid of Blueprint Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {filtered.map((item) => {
+            const isInstantiating = instantiatingId === item.id;
+            return (
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl border border-[#ded8cc] p-6 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md hover:border-[#15803d]/50 transition-all group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#f5f3ec] text-[#5c6861] border border-[#ded8cc]">
                       {item.category}
                     </span>
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#6e7d75]">
+                      <Layers className="w-3.5 h-3.5" />
+                      {item.node_count} Nodes
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-black text-[#0e2118] group-hover:text-[#15803d] transition-colors">
+                      {item.name}
+                    </h3>
+                    <p className="text-xs text-[#6e7d75] mt-1 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] font-medium bg-[#f5f3ec] text-[#425048] px-2 py-0.5 rounded-md border border-[#e5e0d5]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <p className="text-xs text-[#78857e]">
-                  {item.description}
-                </p>
-              </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-[#f2eee6]">
-                <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: item.initialColor.bg,
-                    color: item.initialColor.text,
-                  }}
-                >
-                  {item.category}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleUseTemplate}
-                  className="px-3.5 py-1.5 border border-[#e4ded3] hover:bg-[#f5f2eb] text-xs font-bold text-[#19221d] rounded-xl transition-colors cursor-pointer"
-                >
-                  Use
-                </button>
+                <div className="flex items-center justify-between pt-3 border-t border-[#f2eee6]">
+                  <span className="text-[11px] font-bold text-[#15803d]">
+                    Ready to run
+                  </span>
+                  <button
+                    type="button"
+                    disabled={instantiatingId !== null}
+                    onClick={() => handleUseTemplate(item.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#0e2118] hover:bg-[#15803d] text-white font-extrabold text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isInstantiating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
+                    )}
+                    <span>{isInstantiating ? 'Instantiating...' : 'Use Template'}</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
   );
 };
-

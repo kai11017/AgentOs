@@ -171,3 +171,51 @@
   status:
     - completed
   summary: "Completed live end-to-end product wiring: HttpApiAdapter connects frontend to backend, WebSocket event stream broadcasts live logs, Ollama llama3:latest model runs live neural inference, and node hover bridges are stabilized."
+
+- task_id: WF-004
+  title: "Encrypted Credential Vault, Bundled Python MCP Servers & Workflow Template Library"
+  description: "Implement Fernet AES-encrypted credential vault with masking, bundled zero-dependency local Python MCP servers (Filesystem & System Diagnostics), pre-built industrial workflow template registry with 1-click instantiation, and full UI integration."
+  goal: "Provide production-grade secret management, out-of-the-box local tool servers without NPM dependencies, and immediate 1-click workflow blueprints for autonomous research, scheduled health digests, human approvals, and code audits."
+  scope:
+    - backend/app/core/security.py
+    - backend/app/models/credential.py
+    - backend/app/api/v1/credentials.py
+    - backend/app/templates/*
+    - backend/app/api/v1/templates.py
+    - mcp_tools/filesystem/*
+    - mcp_tools/system_info/*
+    - backend/app/engine/mcp/*
+    - frontend/src/api/http-adapter.ts
+    - frontend/src/components/views/TemplatesView.tsx
+    - frontend/src/components/views/SettingsView.tsx
+    - frontend/src/components/toolbar/WorkflowToolbar.tsx
+    - backend/tests/run_tests.py
+  constraints:
+    - Zero NPM / external dependencies required for bundled MCP servers.
+    - Fernet AES-128-CBC + HMAC-SHA256 authenticated encryption for all stored credentials.
+    - Safe workspace sandbox boundaries for filesystem operations.
+    - Collision-free node/edge ID generation when instantiating templates.
+  acceptance_criteria:
+    - Credential vault encrypts secrets, returns masked previews, and allows runtime decryption.
+    - Bundled filesystem and system_info MCP servers pass standard JSON-RPC 2.0 handshake and tool execution.
+    - Prebuilt template library exposes 4 industrial multi-node templates with 1-click instantiation into the database and canvas.
+    - All 15 backend architecture tests pass.
+    - Frontend TypeScript and Vite build passes with zero errors.
+  risk_level: low
+  created_at: 2026-11-16T17:02:00Z
+  started_at: 2026-11-16T17:05:00Z
+  completed_at: 2026-11-16T17:31:00Z
+  agent: "Antigravity Assistant"
+  model: "Gemini 3.8 Flash (High)"
+  prompt_version: "2.0"
+  base_commit: "a80a2be"
+  branch: "agent/wf-004-credentials-templates-mcp-servers"
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  summary: "Successfully implemented the encrypted credential vault, bundled local Python MCP servers (Filesystem & System Info), pre-built workflow template library with 1-click instantiation, and comprehensive UI integrations. All 15 backend tests and frontend Vite builds passed with 0 errors."
