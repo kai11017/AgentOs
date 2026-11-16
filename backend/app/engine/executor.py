@@ -13,6 +13,7 @@ from backend.app.engine.handlers.http import HTTPNodeHandler
 from backend.app.engine.handlers.database import DatabaseNodeHandler
 from backend.app.engine.handlers.output import OutputNodeHandler
 from backend.app.engine.handlers.approval import ApprovalNodeHandler
+from backend.app.engine.handlers.knowledge import KnowledgeNodeHandler
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.api.v1.credentials import resolve_credential
 
@@ -30,6 +31,11 @@ HANDLERS = {
     "approval": ApprovalNodeHandler(),
     "human-approval": ApprovalNodeHandler(),
     "manual-review": ApprovalNodeHandler(),
+    "document-rag": KnowledgeNodeHandler(),
+    "vector-search": KnowledgeNodeHandler(),
+    "knowledge": KnowledgeNodeHandler(),
+    "knowledge-base": KnowledgeNodeHandler(),
+    "doc-reference": KnowledgeNodeHandler(),
 }
 
 class WorkflowExecutor:

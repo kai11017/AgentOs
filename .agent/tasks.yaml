@@ -219,3 +219,52 @@
   status:
     - completed
   summary: "Successfully implemented the encrypted credential vault, bundled local Python MCP servers (Filesystem & System Info), pre-built workflow template library with 1-click instantiation, and comprehensive UI integrations. All 15 backend tests and frontend Vite builds passed with 0 errors."
+
+- task_id: WF-005
+  title: "Local Document RAG & Vector Knowledge Base Engine"
+  description: "Implement local document chunking, embeddings with Gemini / Ollama / sublinear TF-IDF fallback, in-memory and SQLite cosine similarity vector storage with hybrid keyword ranking, autonomous agent KnowledgeRetrieverTool, KnowledgeNodeHandler, REST endpoints, and frontend adapter methods."
+  goal: "Enable zero-cost, local-first and cloud-augmented semantic search across documents and knowledge bases for autonomous agents and workflow DAGs."
+  scope:
+    - backend/app/models/knowledge.py
+    - backend/app/models/__init__.py
+    - backend/app/engine/rag/splitter.py
+    - backend/app/engine/rag/embeddings.py
+    - backend/app/engine/rag/vector_store.py
+    - backend/app/engine/tools/knowledge.py
+    - backend/app/engine/tools/registry.py
+    - backend/app/engine/handlers/knowledge.py
+    - backend/app/engine/executor.py
+    - backend/app/api/v1/knowledge.py
+    - backend/app/api/v1/router.py
+    - frontend/src/api/http-adapter.ts
+    - backend/tests/run_tests.py
+  constraints:
+    - Zero recurring vector DB subscription costs (100% offline fallback via deterministic 128-dim sublinear TF-IDF vectorizer).
+    - Clean-room architectural design without external proprietary code.
+  acceptance_criteria:
+    - RecursiveTextSplitter chunks markdown, code, and text with configurable overlap and multi-delimiter fallback hierarchy.
+    - EmbeddingService generates vector embeddings via Gemini text-embedding-004, Ollama /api/embed, and deterministic 128-dim TF-IDF fallback.
+    - LocalVectorStore calculates cosine similarity and hybrid search (70% semantic / 30% keyword).
+    - Autonomous agents can dynamically invoke KnowledgeRetrieverTool in ReAct loops.
+    - KnowledgeNodeHandler executes in DAG workflows resolving queries from $json or node configs.
+    - REST endpoints support collection CRUD, document uploads, and semantic search queries.
+    - All 16 backend architecture tests pass.
+    - Frontend TypeScript and Vite build passes with 0 errors.
+  risk_level: low
+  created_at: 2026-11-16T17:35:00Z
+  started_at: 2026-11-16T17:38:00Z
+  completed_at: 2026-11-16T18:01:00Z
+  agent: "Antigravity Assistant"
+  model: "Gemini 3.8 Flash (High)"
+  prompt_version: "2.0"
+  base_commit: "a570ea5"
+  branch: "agent/wf-005-local-rag-knowledge-base"
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  summary: "Successfully implemented the complete Local Document RAG & Vector Knowledge Base Engine with recursive chunking, multi-provider embeddings (Gemini/Ollama/TF-IDF), hybrid semantic+keyword retrieval, autonomous agent tool integration, DAG node handler, and full REST/frontend API coverage. All 16 backend architecture tests and frontend Vite builds passed with 0 errors."

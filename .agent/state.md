@@ -7,7 +7,7 @@
 a80a2be
 
 ## Current Milestone
-Phase 4: Encrypted Credential Vault, Bundled Python MCP Servers & Workflow Template Library
+Phase 5: Local Document RAG & Vector Knowledge Base Engine
 
 ## Completed
 - **Architecture Finalized & Hardened**:
@@ -55,10 +55,19 @@ Phase 4: Encrypted Credential Vault, Bundled Python MCP Servers & Workflow Templ
   - Implemented `/api/v1/templates` and `/api/v1/templates/{id}/instantiate` with unique node/edge UUID generation.
   - Wired into `TemplatesView.tsx` with category filters, hero banner, and 1-click instantiation directly into the React Flow editor canvas.
   - Added "Templates" quick launcher button in `WorkflowToolbar.tsx`.
+- **Local Document RAG & Vector Knowledge Base Engine**:
+  - Created `KnowledgeCollectionModel`, `KnowledgeDocumentModel`, and `KnowledgeChunkModel` in `backend/app/models/knowledge.py`.
+  - Implemented `RecursiveTextSplitter` with recursive multi-delimiter chunking and configurable overlap.
+  - Implemented `EmbeddingService` supporting Gemini `text-embedding-004`, Ollama `/api/embed`, and deterministic 128-dim sublinear TF-IDF fallback vectorizer.
+  - Built `LocalVectorStore` with cosine similarity, collection management, and weighted hybrid (70% semantic / 30% keyword) search.
+  - Added `KnowledgeRetrieverTool` allowing autonomous agents to query knowledge collections during ReAct reasoning loops.
+  - Created `KnowledgeNodeHandler` executing in DAG workflows (`"document-rag"`, `"vector-search"`, `"knowledge"`).
+  - Implemented REST endpoints (`/api/v1/knowledge/collections`, `/upload`, `/query`, `/delete`) and frontend adapter methods.
 - **Testing & Verification**:
-  - All 15 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
-  - Frontend TypeScript & Vite production build compiles with 0 errors in 14.20s.
+  - All 16 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
+  - Frontend TypeScript & Vite production build compiles with 0 errors in 21.48s.
 
 ## Next Steps
-1. Package standalone desktop application (Tauri or Electron).
-2. Add community integration nodes (Slack/Discord Webhooks, Google Sheets, local vector store ChromaDB/FAISS).
+1. Task WF-006: Visual Expression Picker & Node-Level Step Testing.
+2. Task WF-007: Containerized Stack & GitHub CI/CD (`docker-compose.yml`, `.github/workflows/ci.yml`).
+3. Task WF-008: Standalone Desktop Packaging (Tauri v2).

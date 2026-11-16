@@ -396,6 +396,7 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
         { name: 'fetch_url', description: 'SSRF-safe web extractor', isMcp: false },
         { name: 'code_runner', description: 'Sandboxed Python runner', isMcp: false },
         { name: 'memory', description: 'Persistent key-value memory', isMcp: false },
+        { name: 'knowledge_retriever', description: 'Local Document Vector Search', isMcp: false },
       ];
     }
   }
@@ -480,6 +481,60 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
       method: 'POST',
     });
   }
+
+  // ─── Local Document RAG & Vector Knowledge Base ─────────────────────────────
+
+  async listKnowledgeCollections(): Promise<{ collections: KnowledgeCollectionItem[] }> {
+    return this.request('/knowledge/collections');
+  }
+
+  async createKnowledgeCollection(name: string, description: string = ''): Promise<any> {
+    return this.request('/knowledge/collections', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
+  async uploadKnowledgeDocument(payload: {
+    collection: string;
+    filename: string;
+    content: string;
+    chunk_size?: number;
+    chunk_overlap?: number;
+    metadata?: Record<string, any>;
+  }): Promise<any> {
+    return this.request('/knowledge/upload', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async queryKnowledge(payload: {
+    collection: string;
+    query: string;
+    top_k?: number;
+  }): Promise<{ collection: string; query: string; total_results: number; results: any[] }> {
+    return this.request('/knowledge/query', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteKnowledgeCollection(collectionId: string): Promise<any> {
+    return this.request(`/knowledge/collections/${collectionId}`, {
+      method: 'DELETE',
+    });
+  }
+}
+
+export interface KnowledgeCollectionItem {
+  id: string;
+  name: string;
+  description: string;
+  document_count: number;
+  chunk_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CredentialItem {

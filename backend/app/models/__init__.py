@@ -1,6 +1,11 @@
 from backend.app.models.workflow import WorkflowModel, WorkflowNodeModel, WorkflowEdgeModel
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.models.credential import CredentialModel
+from backend.app.models.knowledge import (
+    KnowledgeCollectionModel,
+    KnowledgeDocumentModel,
+    KnowledgeChunkModel,
+)
 
 __all__ = [
     "WorkflowModel",
@@ -9,5 +14,8 @@ __all__ = [
     "ExecutionModel",
     "ExecutionLogModel",
     "CredentialModel",
+    "KnowledgeCollectionModel",
+    "KnowledgeDocumentModel",
+    "KnowledgeChunkModel",
 ]
 

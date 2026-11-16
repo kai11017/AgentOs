@@ -339,8 +339,86 @@ async def main():
         assert len(inst_wf["edges"]) == 3
         print(f"  [PASS] Template Instantiation (Created '{inst_wf['name']}' with {len(inst_wf['nodes'])} nodes)")
 
+        # ─── 16. Testing Local Document RAG & Vector Knowledge Base ─────
+        print("\n--- 16. Testing Local Document RAG & Vector Knowledge Base ---")
+        from backend.app.engine.tools.knowledge import KnowledgeRetrieverTool
+        from backend.app.engine.handlers.knowledge import KnowledgeNodeHandler
+
+        # 1. Ingest document
+        res_upload = await client.post("/api/v1/knowledge/upload", json={
+            "collection": "engineering_docs",
+            "filename": "system_architecture.md",
+            "content": (
+                "# LocalFlow Architecture\n"
+                "LocalFlow Agent is an autonomous workflow engine designed for private desktop automation.\n"
+                "It utilizes PostgreSQL with asyncpg, Ollama for local LLM inference, and Model Context Protocol (MCP) for tool execution.\n"
+                "The system includes an authenticated Fernet credential vault and APScheduler for automated cron triggers."
+            ),
+            "chunk_size": 250,
+            "chunk_overlap": 30,
+        })
+        assert res_upload.status_code == 201
+        upload_data = res_upload.json()
+        assert upload_data["status"] == "success"
+        assert upload_data["chunks_ingested"] >= 1
+        print("  Ingested document into 'engineering_docs':", upload_data["chunks_ingested"], "chunks")
+
+        # 2. Check collections list
+        res_cols = await client.get("/api/v1/knowledge/collections")
+        assert res_cols.status_code == 200
+        cols_data = res_cols.json().get("collections", [])
+        target_col = next((c for c in cols_data if c["name"] == "engineering_docs"), None)
+        assert target_col is not None
+        assert target_col["document_count"] >= 1
+        col_id = target_col["id"]
+
+        # 3. Query knowledge via API
+        res_q = await client.post("/api/v1/knowledge/query", json={
+            "collection": "engineering_docs",
+            "query": "What database driver does LocalFlow use?",
+            "top_k": 2,
+        })
+        assert res_q.status_code == 200
+        q_data = res_q.json()
+        assert q_data["total_results"] >= 1
+        top_chunk = q_data["results"][0]
+        assert "asyncpg" in top_chunk["content"].lower()
+        print(f"  Semantic query match score: {top_chunk['score']} (Found '{top_chunk['filename']}')")
+
+        # 4. Test KnowledgeRetrieverTool agent tool execution
+        rag_tool = KnowledgeRetrieverTool()
+        tool_out = await rag_tool.execute(query="database and drivers", collection="engineering_docs")
+        assert tool_out["status"] == "success"
+        assert tool_out["matches_found"] >= 1
+        assert "asyncpg" in tool_out["context_block"]
+        print("  KnowledgeRetrieverTool executed autonomously by agent tool loop")
+
+        # 5. Test KnowledgeNodeHandler execution
+        rag_handler = KnowledgeNodeHandler()
+        node_out = await rag_handler.execute(
+            node={
+                "id": "node-rag-test",
+                "data": {
+                    "config": {
+                        "collection": "engineering_docs",
+                        "query": "credential vault and security",
+                        "topK": 2,
+                    }
+                }
+            },
+            context={"$json": {}}
+        )
+        assert node_out["status"] == "success"
+        assert "Fernet" in node_out["context_block"]
+        print("  KnowledgeNodeHandler executed successfully in DAG context")
+
+        # 6. Cleanup collection
+        res_del_col = await client.delete(f"/api/v1/knowledge/collections/{col_id}")
+        assert res_del_col.status_code == 200
+        print("  [PASS] Document RAG & Vector Knowledge Base Engine")
+
     print("\n==========================================")
-    print("ALL 15 PRODUCTION ARCHITECTURE TESTS PASSED!")
+    print("ALL 16 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
 
 

@@ -5,6 +5,7 @@ from backend.app.engine.tools.web_search import WebSearchTool
 from backend.app.engine.tools.fetch_url import FetchURLTool
 from backend.app.engine.tools.code_runner import CodeRunnerTool
 from backend.app.engine.tools.memory import global_memory_tool
+from backend.app.engine.tools.knowledge import KnowledgeRetrieverTool
 
 class ToolRegistry:
     def __init__(self):
@@ -17,6 +18,7 @@ class ToolRegistry:
         self.register(FetchURLTool())
         self.register(CodeRunnerTool())
         self.register(global_memory_tool)
+        self.register(KnowledgeRetrieverTool())
 
     def register(self, tool: BaseTool):
         self._tools[tool.name] = tool
