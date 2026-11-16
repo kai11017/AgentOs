@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Execution, ExecutionLog, ExecutionStatus } from '@/types/workflow';
 import { getApiAdapter } from '@/api';
 
-const WS_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
+const WS_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8005')
   .replace(/^http/, 'ws');
 
 interface ExecutionState {

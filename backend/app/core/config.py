@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # Server Binding (Strictly 127.0.0.1 for local-first host protection)
     HOST: str = "127.0.0.1"
-    PORT: int = 8000
+    PORT: int = 8005
     
     # Database URL: Supports PostgreSQL (Docker on 5433 / Supabase) with SQLite local fallback
     DATABASE_URL: str = Field(

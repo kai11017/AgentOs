@@ -1,4 +1,4 @@
-# ========================================================
+﻿# ========================================================
 # AgentOS / LocalFlow - One-Click Launcher (PowerShell)
 # ========================================================
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -28,11 +28,11 @@ if ($DockerRunning) {
 }
 
 # 2. Start Backend API Server
-Write-Host "`n[2/3] Starting Backend API Server (FastAPI on http://127.0.0.1:8000)..." -ForegroundColor Yellow
-$BackendJob = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "cd '$RootPath\backend'; & '.\.venv\Scripts\Activate.ps1'; uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload" -PassThru
+Write-Host "`n[2/3] Starting Backend API Server (FastAPI on http://127.0.0.1:8005)..." -ForegroundColor Yellow
+$BackendJob = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "cd '$RootPath\backend'; & '.\.venv\Scripts\Activate.ps1'; uvicorn app.main:app --host 127.0.0.1 --port 8005 --reload" -PassThru
 
 # 3. Start Frontend Development Server
-Write-Host "`n[3/3] Starting Frontend Dev Server (Vite on http://localhost:5173)..." -ForegroundColor Yellow
+Write-Host "`n[3/3] Starting Frontend Dev Server (Vite on http://localhost:3000)..." -ForegroundColor Yellow
 $FrontendJob = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "cd '$RootPath\frontend'; npm run dev" -PassThru
 
 Write-Host "`nWaiting for servers to initialize..." -ForegroundColor Green
@@ -40,10 +40,10 @@ Start-Sleep -Seconds 3
 
 # 4. Open Browser
 Write-Host "`nOpening LocalFlow Studio in your default browser..." -ForegroundColor Cyan
-Start-Process "http://localhost:5173"
+Start-Process "http://localhost:3000"
 
 Write-Host "`nAgentOS / LocalFlow is up and running!" -ForegroundColor Green
-Write-Host "  • Frontend: http://localhost:5173" -ForegroundColor White
-Write-Host "  • Backend API: http://127.0.0.1:8000" -ForegroundColor White
-Write-Host "  • API Docs: http://127.0.0.1:8000/docs" -ForegroundColor White
+Write-Host "  • Frontend: http://localhost:3000" -ForegroundColor White
+Write-Host "  • Backend API: http://127.0.0.1:8005" -ForegroundColor White
+Write-Host "  • API Docs: http://127.0.0.1:8005/docs" -ForegroundColor White
 Write-Host "`nKeep the terminal windows open while working.`n" -ForegroundColor DarkGray

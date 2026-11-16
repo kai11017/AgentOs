@@ -25,26 +25,26 @@ if %ERRORLEVEL% EQU 0 (
 
 :: 2. Launch Backend Server in new window
 echo.
-echo [2/3] Launching FastAPI Backend (http://127.0.0.1:8000)...
-start "LocalFlow Backend" cmd /k "cd /d "%ROOT_DIR%backend" && call .venv\Scripts\activate.bat && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+echo [2/3] Launching FastAPI Backend (http://127.0.0.1:8005)...
+start "LocalFlow Backend" cmd /k "cd /d "%ROOT_DIR%backend" && call .venv\Scripts\activate.bat && uvicorn app.main:app --host 127.0.0.1 --port 8005 --reload"
 
 :: 3. Launch Frontend Server in new window
 echo.
-echo [3/3] Launching Vite Frontend (http://localhost:5173)...
+echo [3/3] Launching Vite Frontend (http://localhost:3000)...
 start "LocalFlow Frontend" cmd /k "cd /d "%ROOT_DIR%frontend" && npm run dev"
 
-timeout /t 3 >nul
+ping 127.0.0.1 -n 4 >nul
 
 echo.
 echo Opening LocalFlow Studio in browser...
-start http://localhost:5173
+start http://localhost:3000
 
 echo.
 echo ========================================================
 echo   LocalFlow / AgentOS is running!
-echo   Frontend:  http://localhost:5173
-echo   Backend:   http://127.0.0.1:8000
-echo   API Docs:  http://127.0.0.1:8000/docs
-echo ========================================================
+echo   Frontend:  http://localhost:3000
+echo   Backend:   http://127.0.0.1:8005
+echo   API Docs:  http://127.0.0.1:8005/docs
+=======================================================
 echo.
 pause

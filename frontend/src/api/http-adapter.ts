@@ -3,7 +3,7 @@ import type { Workflow, Execution, ExecutionLog, ExecutionStatus } from '@/types
 import type { NodeDefinition } from '@/types/node-definitions';
 import { mockApiAdapter } from './mock-adapter';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8005/api/v1';
 
 export interface ModelInfo {
   name: string;
