@@ -7,7 +7,7 @@
 a80a2be
 
 ## Current Milestone
-Phase 5: Local Document RAG & Vector Knowledge Base Engine
+Phase 6: Visual Expression Picker & Node-Level Step Testing
 
 ## Completed
 - **Architecture Finalized & Hardened**:
@@ -63,11 +63,17 @@ Phase 5: Local Document RAG & Vector Knowledge Base Engine
   - Added `KnowledgeRetrieverTool` allowing autonomous agents to query knowledge collections during ReAct reasoning loops.
   - Created `KnowledgeNodeHandler` executing in DAG workflows (`"document-rag"`, `"vector-search"`, `"knowledge"`).
   - Implemented REST endpoints (`/api/v1/knowledge/collections`, `/upload`, `/query`, `/delete`) and frontend adapter methods.
+- **Visual Expression Builder & Node-Level Step Testing**:
+  - Created `ExpressionBuilderModal.tsx` allowing visual variable inspection across upstream DAG nodes, current `$json` payload, and system `$env`.
+  - Built live expression evaluator backend endpoint `POST /api/v1/nodes/evaluate-expression` with real-time type inspection.
+  - Built `NodeTestModal.tsx` runner allowing custom JSON payload inputs, isolated step execution, latency tracking, formatted output tree, and real-time step execution telemetry logs.
+  - Created `CodeNodeHandler` and `TransformNodeHandler` for standalone python scripts and schema transforms.
+  - Added `FieldLabelWithExpression` one-click `{{ fx }}` buttons across all configuration fields in `NodeConfigPanel.tsx`.
+  - Enabled "Save as sample for next nodes" storing execution results directly in node data for downstream DAG schema discovery.
 - **Testing & Verification**:
-  - All 16 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
-  - Frontend TypeScript & Vite production build compiles with 0 errors in 21.48s.
+  - All 17 comprehensive architecture tests passing cleanly in `backend/tests/run_tests.py`.
+  - Frontend TypeScript & Vite production build compiles with 0 errors in 6.73s.
 
 ## Next Steps
-1. Task WF-006: Visual Expression Picker & Node-Level Step Testing.
-2. Task WF-007: Containerized Stack & GitHub CI/CD (`docker-compose.yml`, `.github/workflows/ci.yml`).
-3. Task WF-008: Standalone Desktop Packaging (Tauri v2).
+1. Task WF-007: Containerized Stack & GitHub CI/CD (`docker-compose.yml`, `.github/workflows/ci.yml`).
+2. Task WF-008: Standalone Desktop Packaging (Tauri v2).

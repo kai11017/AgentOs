@@ -3,6 +3,8 @@ import { useUIStore } from '@/stores/ui-store';
 import { useWorkflowStore } from '@/stores/workflow-store';
 import nodeRegistry from '@/nodes/registry';
 import { getLucideIcon } from '@/lib/utils';
+import { ExpressionBuilderModal } from './ExpressionBuilderModal';
+import { NodeTestModal } from './NodeTestModal';
 import {
   Check,
   Upload,
@@ -21,6 +23,8 @@ import {
   Globe,
   Calculator,
   Sliders,
+  Play,
+  Code2,
 } from 'lucide-react';
 
 interface UploadedFileItem {
@@ -43,9 +47,49 @@ export const NodeConfigPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'node' | 'output' | 'debug'>('node');
   const [isSaved, setIsSaved] = useState(false);
 
+  // Expression Builder & Step Testing modal states
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [isExpressionModalOpen, setIsExpressionModalOpen] = useState(false);
+  const [activeExpressionField, setActiveExpressionField] = useState<{
+    name: string;
+    value: string;
+  } | null>(null);
+
   // Unified config form state for the currently selected node
   const [config, setConfig] = useState<Record<string, any>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenExpression = (fieldName: string, currentValue: any) => {
+    setActiveExpressionField({
+      name: fieldName,
+      value: String(currentValue ?? ''),
+    });
+    setIsExpressionModalOpen(true);
+  };
+
+  const handleApplyExpression = (expr: string) => {
+    if (activeExpressionField) {
+      handleFieldChange(activeExpressionField.name, expr);
+    }
+  };
+
+  const FieldLabelWithExpression: React.FC<{
+    label: string;
+    fieldName: string;
+  }> = ({ label, fieldName }) => (
+    <div className="flex items-center justify-between">
+      <label className="text-[11px] font-semibold text-[#5c6861]">{label}</label>
+      <button
+        type="button"
+        onClick={() => handleOpenExpression(fieldName, config[fieldName])}
+        className="text-[10px] font-mono text-[#15803d] hover:text-[#166534] hover:bg-[#15803d]/10 px-1.5 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer font-bold"
+        title="Open Expression Builder for this field"
+      >
+        <Sparkles className="w-3 h-3 text-[#15803d]" />
+        <span>{'{{ fx }}'}</span>
+      </button>
+    </div>
+  );
 
   // Sync state whenever selected node changes
   useEffect(() => {
@@ -185,40 +229,52 @@ export const NodeConfigPanel: React.FC = () => {
   return (
     <aside className="w-80 shrink-0 bg-white border-l border-[#ded8cc] flex flex-col justify-between h-full select-none z-30 shadow-xs">
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Top Segmented Tabs: Node | Output | Debug */}
-        <div className="flex items-center px-4 pt-3 border-b border-[#ded8cc] gap-6 text-xs font-bold text-[#6a7c72]">
+        {/* Top Segmented Tabs: Node | Output | Debug & Test Step Launcher */}
+        <div className="flex items-center justify-between px-4 pt-3 border-b border-[#ded8cc]">
+          <div className="flex items-center gap-5 text-xs font-bold text-[#6a7c72]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('node')}
+              className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+                activeTab === 'node'
+                  ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                  : 'hover:text-[#0e2118]'
+              }`}
+            >
+              Node
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('output')}
+              className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+                activeTab === 'output'
+                  ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                  : 'hover:text-[#0e2118]'
+              }`}
+            >
+              Output
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('debug')}
+              className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
+                activeTab === 'debug'
+                  ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
+                  : 'hover:text-[#0e2118]'
+              }`}
+            >
+              Debug
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setActiveTab('node')}
-            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
-              activeTab === 'node'
-                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
-                : 'hover:text-[#0e2118]'
-            }`}
+            onClick={() => setIsTestModalOpen(true)}
+            className="mb-2 px-2.5 py-1 bg-[#15803d]/10 hover:bg-[#15803d] text-[#15803d] hover:text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs border border-[#15803d]/30"
+            title="Run isolated step test with custom input"
           >
-            Node
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('output')}
-            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
-              activeTab === 'output'
-                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
-                : 'hover:text-[#0e2118]'
-            }`}
-          >
-            Output
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('debug')}
-            className={`pb-2.5 transition-colors relative cursor-pointer font-display ${
-              activeTab === 'debug'
-                ? 'text-[#15803d] border-b-2 border-[#15803d] font-bold'
-                : 'hover:text-[#0e2118]'
-            }`}
-          >
-            Debug
+            <Play className="w-2.5 h-2.5 fill-current" />
+            Test step
           </button>
         </div>
 
@@ -258,9 +314,7 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      To Email (Recipient) <span className="text-red-500">*</span>
-                    </label>
+                    <FieldLabelWithExpression label="To Email (Recipient) *" fieldName="toEmail" />
                     <input
                       type="text"
                       value={config.toEmail || ''}
@@ -271,9 +325,7 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Subject
-                    </label>
+                    <FieldLabelWithExpression label="Subject" fieldName="subject" />
                     <input
                       type="text"
                       value={config.subject || ''}
@@ -284,12 +336,7 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-semibold text-[#5c6861]">
-                        Message Body
-                      </label>
-                      <span className="text-[10px] text-[#78857e] font-mono">HTML / Markdown</span>
-                    </div>
+                    <FieldLabelWithExpression label="Message Body (HTML / Markdown)" fieldName="emailBody" />
                     <textarea
                       rows={4}
                       value={config.emailBody || ''}
@@ -425,9 +472,7 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Title Property Mapping
-                    </label>
+                    <FieldLabelWithExpression label="Title Property Mapping" fieldName="titleMapping" />
                     <input
                       type="text"
                       value={config.titleMapping || '{{$json.title}}'}
@@ -594,9 +639,10 @@ export const NodeConfigPanel: React.FC = () => {
 
                   {/* Instructions / System Prompt */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      System Instructions / Workflow Objective
-                    </label>
+                    <FieldLabelWithExpression
+                      label="System Instructions / Workflow Objective"
+                      fieldName="instructions"
+                    />
                     <textarea
                       rows={3}
                       value={config.instructions || ''}
@@ -717,9 +763,7 @@ export const NodeConfigPanel: React.FC = () => {
               {isConditionNode && (
                 <div className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Property to Evaluate
-                    </label>
+                    <FieldLabelWithExpression label="Property to Evaluate" fieldName="property" />
                     <input
                       type="text"
                       value={config.property || '{{$json.status}}'}
@@ -745,9 +789,7 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">
-                      Compare Value
-                    </label>
+                    <FieldLabelWithExpression label="Compare Value" fieldName="compareValue" />
                     <input
                       type="text"
                       value={config.compareValue || 'approved'}
@@ -763,9 +805,7 @@ export const NodeConfigPanel: React.FC = () => {
                 <div className="space-y-3">
                   {definition?.configFields.map((field) => (
                     <div key={field.name} className="space-y-1">
-                      <label className="text-[11px] font-semibold text-[#5c6861]">
-                        {field.label}
-                      </label>
+                      <FieldLabelWithExpression label={field.label} fieldName={field.name} />
                       <input
                         type="text"
                         value={String(config[field.name] ?? field.defaultValue ?? '')}
@@ -831,6 +871,30 @@ export const NodeConfigPanel: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* Expression Builder Modal */}
+      {selectedNode && (
+        <ExpressionBuilderModal
+          isOpen={isExpressionModalOpen}
+          onClose={() => setIsExpressionModalOpen(false)}
+          fieldName={activeExpressionField?.name || 'expression'}
+          initialValue={activeExpressionField?.value || ''}
+          currentNodeId={selectedNode.id}
+          onApply={handleApplyExpression}
+        />
+      )}
+
+      {/* Node Step Testing Modal */}
+      {selectedNode && (
+        <NodeTestModal
+          isOpen={isTestModalOpen}
+          onClose={() => setIsTestModalOpen(false)}
+          nodeId={selectedNode.id}
+          nodeType={selectedNode.data.definitionType}
+          nodeLabel={selectedNode.data.label || 'Workflow Node'}
+          nodeConfig={config}
+        />
+      )}
     </aside>
   );
 };

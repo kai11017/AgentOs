@@ -417,8 +417,93 @@ async def main():
         assert res_del_col.status_code == 200
         print("  [PASS] Document RAG & Vector Knowledge Base Engine")
 
+        print("\n--- 17. Testing Expression Evaluator & Isolated Node Step Testing ---")
+        # 1. Test live expression evaluation
+        res_expr1 = await client.post(
+            "/api/v1/nodes/evaluate-expression",
+            json={
+                "expression": "{{ $json.user.name }} - {{ $json.role }}",
+                "context": {
+                    "$json": {
+                        "user": {"name": "Alice"},
+                        "role": "Principal Engineer",
+                    }
+                },
+            },
+        )
+        assert res_expr1.status_code == 200
+        data_expr1 = res_expr1.json()
+        assert data_expr1["success"] is True
+        assert data_expr1["result"] == "Alice - Principal Engineer"
+        print("  Evaluated string expression: 'Alice - Principal Engineer'")
+
+        # 2. Test numeric math expression
+        res_expr2 = await client.post(
+            "/api/v1/nodes/evaluate-expression",
+            json={
+                "expression": "{{ $json.metrics.score * 2 }}",
+                "context": {
+                    "$json": {
+                        "metrics": {"score": 95}
+                    }
+                },
+            },
+        )
+        assert res_expr2.status_code == 200
+        data_expr2 = res_expr2.json()
+        assert data_expr2["success"] is True
+        assert data_expr2["result"] == 190
+        print("  Evaluated arithmetic expression: 95 * 2 = 190")
+
+        # 3. Test isolated Python step execution
+        res_step_code = await client.post(
+            "/api/v1/nodes/test",
+            json={
+                "node_id": "test-step-code-1",
+                "node_type": "python-execution",
+                "label": "Custom Aggregator Script",
+                "config": {
+                    "code": "val = json_data.get('count', 0) * 10\nprint('Processed items:', val)\n_return_val = {'computed': val, 'ok': True}"
+                },
+                "input_data": {"count": 12},
+                "upstream_nodes": {},
+            },
+        )
+        assert res_step_code.status_code == 200
+        step_code_data = res_step_code.json()
+        assert step_code_data["status"] == "success"
+        assert step_code_data["duration_ms"] > 0
+        assert step_code_data["output"]["data"]["computed"] == 120
+        assert len(step_code_data["logs"]) >= 1
+        print(f"  Isolated code step test executed in {step_code_data['duration_ms']}ms (Result: 120)")
+
+        # 4. Test isolated Transform step execution with expressions
+        res_step_trans = await client.post(
+            "/api/v1/nodes/test",
+            json={
+                "node_id": "test-step-trans-1",
+                "node_type": "transform",
+                "label": "Field Transformer",
+                "config": {
+                    "fields": {
+                        "greeting": "Welcome {{ $json.name }}!",
+                        "system_status": "ONLINE",
+                    }
+                },
+                "input_data": {"name": "Kai"},
+                "upstream_nodes": {},
+            },
+        )
+        assert res_step_trans.status_code == 200
+        step_trans_data = res_step_trans.json()
+        assert step_trans_data["status"] == "success"
+        assert step_trans_data["output"]["data"]["greeting"] == "Welcome Kai!"
+        assert step_trans_data["output"]["data"]["system_status"] == "ONLINE"
+        print(f"  Isolated transform step test executed with expression resolution (Greeting: Welcome Kai!)")
+        print("  [PASS] Visual Expression Evaluator & Isolated Node Step Testing")
+
     print("\n==========================================")
-    print("ALL 16 PRODUCTION ARCHITECTURE TESTS PASSED!")
+    print("ALL 17 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
 
 

@@ -525,6 +525,84 @@ export class HttpApiAdapter implements WorkflowApiAdapter {
       method: 'DELETE',
     });
   }
+
+  // ─── Step Testing & Expression Evaluation ─────────────────────────────────
+
+  async testNodeStep(payload: TestNodeStepPayload): Promise<TestNodeStepResult> {
+    try {
+      return await this.request<TestNodeStepResult>('/nodes/test', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      return {
+        status: 'error',
+        duration_ms: 0,
+        output: null,
+        logs: [
+          {
+            timestamp: new Date().toISOString(),
+            level: 'error',
+            message: err.message || 'Network request error',
+          },
+        ],
+        error: err.message || 'Failed to execute node step test',
+      };
+    }
+  }
+
+  async evaluateExpression(payload: EvaluateExpressionPayload): Promise<EvaluateExpressionResult> {
+    try {
+      return await this.request<EvaluateExpressionResult>('/nodes/evaluate-expression', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: any) {
+      return {
+        success: false,
+        result: null,
+        type: 'error',
+        preview: 'Error',
+        error: err.message || 'Evaluation error',
+      };
+    }
+  }
+}
+
+export interface TestNodeStepPayload {
+  node_id: string;
+  node_type: string;
+  label?: string;
+  config: Record<string, any>;
+  input_data: Record<string, any>;
+  upstream_nodes?: Record<string, any>;
+}
+
+export interface StepLogItem {
+  timestamp: string;
+  level: string;
+  message: string;
+}
+
+export interface TestNodeStepResult {
+  status: 'success' | 'error';
+  duration_ms: number;
+  output: any;
+  logs: StepLogItem[];
+  error?: string | null;
+}
+
+export interface EvaluateExpressionPayload {
+  expression: string;
+  context: Record<string, any>;
+}
+
+export interface EvaluateExpressionResult {
+  success: boolean;
+  result: any;
+  type: string;
+  preview: string;
+  error?: string | null;
 }
 
 export interface KnowledgeCollectionItem {

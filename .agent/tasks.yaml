@@ -268,3 +268,49 @@
   status:
     - completed
   summary: "Successfully implemented the complete Local Document RAG & Vector Knowledge Base Engine with recursive chunking, multi-provider embeddings (Gemini/Ollama/TF-IDF), hybrid semantic+keyword retrieval, autonomous agent tool integration, DAG node handler, and full REST/frontend API coverage. All 16 backend architecture tests and frontend Vite builds passed with 0 errors."
+
+- task_id: WF-006
+  title: "Visual Expression Picker & Node-Level Step Testing"
+  description: "Build an interactive expression builder modal with upstream DAG schema tree, live simpleeval evaluation preview, and variable insertion, alongside an isolated node step testing runner with customizable JSON input, execution timing, telemetry logs, and downstream sample propagation."
+  goal: "Empower workflow authors to easily construct expressions with full variable visibility and test individual nodes in isolation without running the entire workflow DAG."
+  scope:
+    - backend/app/engine/expressions.py
+    - backend/app/engine/handlers/code.py
+    - backend/app/engine/handlers/transform.py
+    - backend/app/engine/executor.py
+    - backend/app/api/v1/nodes.py
+    - backend/app/api/v1/router.py
+    - frontend/src/api/http-adapter.ts
+    - frontend/src/components/panels/ExpressionBuilderModal.tsx
+    - frontend/src/components/panels/NodeTestModal.tsx
+    - frontend/src/components/panels/NodeConfigPanel.tsx
+    - backend/tests/run_tests.py
+  constraints:
+    - Clean-room architectural design.
+    - Zero breaking changes to existing workflow execution.
+    - Safe sandboxed evaluation of expressions without eval().
+  acceptance_criteria:
+    - ExpressionBuilderModal inspects upstream ancestor nodes in React Flow DAG and displays available keys.
+    - Real-time expression evaluation endpoint returns type and preview.
+    - NodeTestModal allows custom JSON input, runs isolated step on backend, and displays execution duration, output JSON, and logs.
+    - 'Save as sample for next nodes' saves test output to node sampleOutput.
+    - All 17 backend architecture tests pass.
+    - Frontend TypeScript and Vite build passes with 0 errors.
+  risk_level: low
+  created_at: 2026-11-16T18:15:00Z
+  started_at: 2026-11-16T18:18:00Z
+  completed_at: 2026-11-16T18:34:00Z
+  agent: "Antigravity Assistant"
+  model: "Gemini 3.8 Flash (High)"
+  prompt_version: "2.0"
+  base_commit: "4431aef"
+  branch: "agent/wf-006-expression-picker-step-testing"
+  validation:
+    lint: pass
+    typecheck: pass
+    unit_tests: pass
+    integration_tests: pass
+    build: pass
+  status:
+    - completed
+  summary: "Successfully implemented the Visual Expression Builder & Variable Picker and Isolated Node Step Testing Runner. Users can visually browse upstream DAG variables, preview live evaluation results, run isolated single-node step tests with custom input, inspect execution logs, and propagate sample outputs to downstream nodes. All 17 backend tests and frontend Vite builds passed with 0 errors."

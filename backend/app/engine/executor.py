@@ -14,6 +14,8 @@ from backend.app.engine.handlers.database import DatabaseNodeHandler
 from backend.app.engine.handlers.output import OutputNodeHandler
 from backend.app.engine.handlers.approval import ApprovalNodeHandler
 from backend.app.engine.handlers.knowledge import KnowledgeNodeHandler
+from backend.app.engine.handlers.code import CodeNodeHandler
+from backend.app.engine.handlers.transform import TransformNodeHandler
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.api.v1.credentials import resolve_credential
 
@@ -25,6 +27,7 @@ HANDLERS = {
     "planning-agent": AgentNodeHandler(),
     "execution-agent": AgentNodeHandler(),
     "custom-agent": AgentNodeHandler(),
+    "reviewer-agent": AgentNodeHandler(),
     "http-request": HTTPNodeHandler(),
     "database": DatabaseNodeHandler(),
     "output": OutputNodeHandler(),
@@ -36,6 +39,13 @@ HANDLERS = {
     "knowledge": KnowledgeNodeHandler(),
     "knowledge-base": KnowledgeNodeHandler(),
     "doc-reference": KnowledgeNodeHandler(),
+    "python-execution": CodeNodeHandler(),
+    "javascript-skill": CodeNodeHandler(),
+    "code-runner": CodeNodeHandler(),
+    "transform": TransformNodeHandler(),
+    "variable": TransformNodeHandler(),
+    "input": TransformNodeHandler(),
+    "merge": TransformNodeHandler(),
 }
 
 class WorkflowExecutor:
