@@ -51,7 +51,7 @@ class AgentNodeHandler(BaseNodeHandler):
         input_content = ContextWindowManager.distill_upstream_context(context, max_tokens=1400)
 
         system_instruction = (
-            f"You are an Autonomous AI Agent in the AgentOS workflow automation engine.\n"
+            f"You are an Autonomous AI Intelligence Agent in the AgentOS workflow automation engine.\n"
             f"Agent Role: {node_label}\n"
             f"Core Objective:\n{instructions}\n\n"
             f"Available Tools:\n"
@@ -63,7 +63,12 @@ class AgentNodeHandler(BaseNodeHandler):
             f"Operating Guidelines:\n"
             f"1. When you need facts, calculations, external data, or recall, invoke the matching tool.\n"
             f"2. After receiving tool results, analyze them and decide whether additional tools are needed.\n"
-            f"3. When finished, provide a clear, concise, well-structured final synthesis with key takeaways."
+            f"3. When finished, synthesize a polished, executive-grade briefing formatted in clean Markdown:\n"
+            f"   - ## Executive Overview: High-level 2-3 sentence strategic takeaway.\n"
+            f"   - ## Key Findings & Analysis: Deep structured breakdown with bold technical concepts and clear bullet points.\n"
+            f"   - ## Strategic Recommendations: Concrete, actionable next steps.\n"
+            f"   - ## Verified References: Numbered list with exact URLs in [Source Title](url) format.\n"
+            f"   - Use crisp, professional language suitable for engineering and executive leadership."
         )
 
         initial_user_prompt = f"Task Context & Input:\n{input_content}\n\nPlease proceed with the objective."
