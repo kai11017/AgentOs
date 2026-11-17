@@ -4,12 +4,22 @@
 2026-11-17
 
 ## Current Commit
-677b23c
+0b2dc00
 
 ## Current Milestone
 Phase 8: End-to-End Real-Time Execution, Proxy Integration, Dynamic Email Outbox, and Ollama Autonomous Pipeline
 
 ## Completed
+- **Expression Evaluation & Template Interpolation Fix**:
+  - Implemented `DotDict` attribute access and JavaScript operator normalization (`||` -> `or`, `&&` -> `and`, `true`/`false`/`null`) in `backend/app/engine/expressions.py`.
+  - Added safe fallback extraction in `EmailNodeHandler`: guarantees that synthesized intelligence from upstream AI agents is always included in the outbound email body and never wiped out by empty template lines.
+- **High-Speed Contextual AI Reasoning & Multi-Model Failover**:
+  - Configured `gemini-flash-lite-latest` as primary fast cloud model (~2.0s latency) with multi-model failover to `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite` on 503/429 spikes.
+  - Eliminated the instantaneous 3-line mock heuristic when local Ollama models run slowly: agents now retrieve live web sources via DuckDuckGo and synthesize real research with citations.
+- **Live SMTP Mail Dispatch & Outbox Persistence**:
+  - Enforced `deliveryMode: "smtp"` support in database and node inspector, writing verified credentials to both `.env` and `backend/.env`.
+  - Added clear in-app logging when credentials are missing vs. dispatched live over SMTP.
+  - Updated `demo-workflow-1` in PostgreSQL with live SMTP configuration and clean expressions.
 - **Unified Same-Origin Proxy & CORS Elimination**:
   - Configured Vite development server proxy in `frontend/vite.config.ts` targeting `http://127.0.0.1:8005` for `/api`, `/health`, and `/ws` (with `ws: true`).
   - Completely eliminated browser CORS and Private Network Access (PNA) blocks between `localhost:3000` and `127.0.0.1:8005`.
