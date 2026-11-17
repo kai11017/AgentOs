@@ -144,7 +144,7 @@ export const NodeConfigPanel: React.FC = () => {
         // Trigger profile
         initialTailoredConfig = {
           triggerEvent: 'New Email Received',
-          account: 'rippika@gmail.com',
+          account: 'joe@gmail.com',
           filterFolder: 'INBOX / Important',
           pollInterval: 'Every 1 minute (Realtime Webhook)',
           fetchAttachments: true,
@@ -467,7 +467,7 @@ export const NodeConfigPanel: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={config.fromEmail || 'rippika@gmail.com'}
+                      value={config.fromEmail || 'joe@gmail.com'}
                       onChange={(e) => handleFieldChange('fromEmail', e.target.value)}
                       placeholder="e.g. sender@company.com"
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
@@ -638,7 +638,7 @@ export const NodeConfigPanel: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={config.account || 'rippika@gmail.com'}
+                      value={config.account || 'joe@gmail.com'}
                       onChange={(e) => handleFieldChange('account', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
                     />
@@ -1125,7 +1125,7 @@ export const NodeConfigPanel: React.FC = () => {
         status: 'sent',
         delivery: config.deliveryMode || 'local_outbox',
         recipient: config.toEmail || 'team@company.com',
-        sender: config.fromEmail || 'rippika@gmail.com',
+        sender: config.fromEmail || 'joe@gmail.com',
         subject: config.subject || 'Executive Brief',
         message: 'Dispatched and saved to AgentOS Outbox',
       }

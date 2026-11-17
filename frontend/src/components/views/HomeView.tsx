@@ -32,7 +32,7 @@ export const HomeView: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-2xl font-black text-[#0e2118] tracking-tight">
-              Good afternoon, Rippika
+              Good afternoon, Joe
             </h1>
             <p className="font-sans text-xs text-[#6e7d75] mt-1">
               Create. Automate. Innovate. Here is how your autonomous pipelines are running.

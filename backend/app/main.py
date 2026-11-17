@@ -60,7 +60,7 @@ async def seed_initial_demo_workflow():
                     definition_type="email-send",
                     position_x=740.0,
                     position_y=180.0,
-                    config={"toEmail": "team@company.com", "subject": "Executive Brief: Q4 AI Strategy", "fromEmail": "rippika@gmail.com"},
+                    config={"toEmail": "team@company.com", "subject": "Executive Brief: Q4 AI Strategy", "fromEmail": "joe@gmail.com"},
                 ),
                 WorkflowNodeModel(
                     id="node-notion-1",

@@ -79,11 +79,11 @@ export const AppSidebar: React.FC = () => {
       <div className="pt-4 border-t border-[#153828]">
         <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-[#122e22] cursor-pointer transition-colors">
           <div className="w-8 h-8 rounded-full bg-[#183f2e] text-[#86efac] flex items-center justify-center font-display font-black text-xs shrink-0 ring-2 ring-[#22c55e]/40 shadow-2xs">
-            RN
+            J
           </div>
           <div className="flex flex-col min-w-0">
             <span className="font-display text-xs font-bold text-white truncate">
-              Rippika N.
+              Joe
             </span>
             <span className="font-sans text-[10px] font-medium text-[#7d9b8b] truncate">
               Personal Workspace

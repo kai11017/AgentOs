@@ -13,7 +13,7 @@ class TriggerNodeHandler(BaseNodeHandler):
         payload = {
             "status": "triggered",
             "triggerType": trigger_type,
-            "sender": config.get("account", "rippika@gmail.com"),
+            "sender": config.get("account", "joe@gmail.com"),
             "subject": "Q4 AI Strategy & Workflow Optimization",
             "body": "Hi team, please research local open-source models and multi-agent orchestration architecture.",
             "receivedAt": "2026-11-13T14:32:12Z",
