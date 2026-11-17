@@ -4,12 +4,17 @@
 2026-11-17
 
 ## Current Commit
-3264495
+064cbe8
 
 ## Current Milestone
 Phase 9: Broadcast Intelligence, CSV/Excel Ingestion, and "Message to Many" Multi-Recipient Outreach
 
 ## Completed
+- **Replaced Dummy Name 'Rippika' with 'Joe' Across Application**:
+  - Replaced `Rippika N.` and initials badge (`RN` $\rightarrow$ `J`) in [`AppSidebar.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/layout/AppSidebar.tsx).
+  - Updated greeting banner in [`HomeView.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/views/HomeView.tsx) to "Good afternoon, Joe".
+  - Replaced fallback account and sender emails (`rippika@gmail.com` $\rightarrow$ `joe@gmail.com`) in [`NodeConfigPanel.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/panels/NodeConfigPanel.tsx), [`trigger.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/engine/handlers/trigger.py), and [`main.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/main.py).
+  - Cleaned existing outbox email HTML files in `outputs/emails/`.
 - **"Message to Many" Multi-Recipient Broadcast Pipeline**:
   - Implemented `DocReferenceNodeHandler` (`backend/app/engine/handlers/doc_reference.py`) supporting zero-dependency extraction of recipient emails from CSV, Excel (`.xlsx` via native `zipfile` XML parsing), JSON arrays, and unstructured text contact blocks.
   - Upgraded `EmailNodeHandler` (`backend/app/engine/handlers/email.py`) to detect multi-recipient distribution lists, iterate over each recipient, generate individual styled HTML emails, log live progress per recipient, write individual HTML preview files to disk (`./outputs/emails/`), and return comprehensive broadcast reports (`mode: "message_to_many"`).
