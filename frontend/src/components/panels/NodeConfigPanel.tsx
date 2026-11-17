@@ -828,12 +828,21 @@ export const NodeConfigPanel: React.FC = () => {
                       onChange={(e) => handleFieldChange('model', e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] font-semibold"
                     >
-                      <option value="gemini-3.5-flash">gemini-3.5-flash (Google AI Cloud - Connected)</option>
-                      <option value="qwen3.5:4b">qwen3.5:4b (Local Ollama - 3.3 GB - Installed)</option>
-                      <option value="gemini-2.5-pro">gemini-2.5-pro (Google AI Cloud - Deep Reasoning)</option>
+                      <option value="gemini-3.5-flash">gemini-3.5-flash (Google AI Cloud - Lightning Fast ~2s)</option>
+                      <option value="qwen3.5:4b">qwen3.5:4b (Local Ollama - Fast Direct Mode, 3.3 GB)</option>
+                      <option value="llama3.2:1b">llama3.2:1b (Local Ollama - Ultra-Lightweight CPU, 1.3 GB)</option>
+                      <option value="qwen2.5:1.5b">qwen2.5:1.5b (Local Ollama - High Speed CPU, 1.5 GB)</option>
                       <option value="llama3:latest">llama3:latest (Local Ollama - 4.7 GB)</option>
+                      <option value="gemini-2.5-pro">gemini-2.5-pro (Google AI Cloud - Deep Reasoning)</option>
                       <option value="gpt-4o-mini">GPT-4o mini (OpenAI Cloud)</option>
                     </select>
+                    <p className="text-[10px] text-[#78857e] leading-snug">
+                      {(config.model || '').includes('qwen') || (config.model || '').includes('llama') ? (
+                        <span>⚡ <strong>Direct CPU Mode:</strong> Internal reasoning tokens bypassed and weights kept warm in RAM for 5x faster local execution.</span>
+                      ) : (
+                        <span>🚀 <strong>Cloud AI:</strong> High-speed multimodal synthesis in ~2s with real-time web crawling.</span>
+                      )}
+                    </p>
                   </div>
 
                   {/* Skill & Persona Presets */}

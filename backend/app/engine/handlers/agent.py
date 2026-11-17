@@ -99,9 +99,15 @@ class AgentNodeHandler(BaseNodeHandler):
 
         # 2. Local Ollama Execution (if Ollama reachable)
         if is_ollama_reachable(settings.OLLAMA_BASE_URL, timeout=0.15):
+            # Speed Directive: Enforce direct synthesis without chain-of-thought thinking
+            ollama_instruction = (
+                f"{system_instruction}\n\n"
+                f"SPEED & DIRECT REASONING DIRECTIVE:\n"
+                f"Respond directly, concisely, and immediately. Do NOT produce internal thinking, chain-of-thought, or <think> tags. Output the final structured briefing directly."
+            )
             local_res = await self._execute_ollama_loop(
                 model_name=model_name,
-                system_instruction=system_instruction,
+                system_instruction=ollama_instruction,
                 user_prompt=initial_user_prompt,
                 selected_tools=selected_tools,
                 max_iterations=max_iterations,
@@ -321,7 +327,7 @@ class AgentNodeHandler(BaseNodeHandler):
             else:
                 target_model = installed_models[0]
 
-        await log(f"[AI Agent] 🤖 Selected local Ollama model: '{target_model}'", level="info")
+        await log(f"[AI Agent] 🤖 Selected local Ollama model: '{target_model}' (Fast Direct Mode: thinking disabled, resident RAM)", level="info")
         ollama_tools = global_tool_registry.to_ollama_tools(selected_tools)
 
         messages: List[Dict[str, Any]] = [
@@ -331,8 +337,8 @@ class AgentNodeHandler(BaseNodeHandler):
 
         iteration = 0
         try:
-            # 6.0s timeout per turn to protect against CPU hangs and immediately fallback to Gemini
-            timeout = httpx.Timeout(connect=1.0, read=6.0, write=3.0, pool=1.0)
+            # 45.0s read timeout allows CPU generation to finish cleanly without hanging indefinitely
+            timeout = httpx.Timeout(connect=3.0, read=45.0, write=5.0, pool=2.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 while iteration < max_iterations:
                     iteration += 1
@@ -340,6 +346,12 @@ class AgentNodeHandler(BaseNodeHandler):
                         "model": target_model,
                         "messages": messages,
                         "stream": False,
+                        "think": False,
+                        "keep_alive": "60m",
+                        "options": {
+                            "num_predict": 350,
+                            "temperature": 0.2,
+                        },
                     }
                     if ollama_tools:
                         payload["tools"] = ollama_tools
@@ -383,6 +395,8 @@ class AgentNodeHandler(BaseNodeHandler):
 
                     # Final response
                     final_text = msg.get("content", "").strip()
+                    # Strip any stray <think>...</think> blocks if produced
+                    final_text = re.sub(r"<think>.*?</think>", "", final_text, flags=re.DOTALL).strip()
                     if final_text:
                         await log(f"[AI Agent] 💡 Local model '{target_model}' synthesis complete.", level="info")
                         return {
