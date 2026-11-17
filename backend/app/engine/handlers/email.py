@@ -57,16 +57,18 @@ class EmailNodeHandler(BaseNodeHandler):
                 body = "Hello,\n\nThe automated workflow step completed successfully with no additional content."
 
         # 5. Check delivery mode & SMTP credentials
-        delivery_mode = config.get("deliveryMode") or "local_outbox"
+        delivery_mode = config.get("deliveryMode") or os.getenv("SMTP_DELIVERY_MODE", "local_outbox")
         raw_host = config.get("smtpHost") or os.getenv("SMTP_HOST", "")
         raw_user = config.get("smtpUser") or os.getenv("SMTP_USER") or from_email
         smtp_host = sanitize_smtp_host(raw_host, raw_user)
         smtp_port = int(config.get("smtpPort") or os.getenv("SMTP_PORT", "587"))
         smtp_user = raw_user
         smtp_password = config.get("smtpPassword") or os.getenv("SMTP_PASSWORD")
-        use_ssl = config.get("useSSL") or (smtp_port == 465)
+        use_ssl = config.get("useSSL") or (smtp_port == 465) or (os.getenv("SMTP_USE_SSL") == "true")
 
-        has_smtp = bool(smtp_host and smtp_user and smtp_password) and (delivery_mode == "smtp")
+        system_has_smtp = bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD"))
+        should_send_live = (delivery_mode in ("smtp", "live_smtp")) or (system_has_smtp and delivery_mode != "local_outbox_only")
+        has_smtp = bool(smtp_host and smtp_user and smtp_password) and should_send_live
         message_id = f"msg-{uuid.uuid4().hex[:12]}"
 
         # Always save a local copy to ./outputs/emails for full auditability and in-app viewing
@@ -77,9 +79,41 @@ class EmailNodeHandler(BaseNodeHandler):
         preview_filename = f"email_{timestamp_str}_{clean_subj}.html"
         preview_file = os.path.join(output_dir, preview_filename)
 
+        sent_via_smtp = False
+        smtp_error = None
+
+        if has_smtp:
+            if emit_log:
+                await emit_log(f"[{label}] 🔌 Connecting to live SMTP server {smtp_host}:{smtp_port} for {to_email}...", level="info")
+            try:
+                msg = EmailMessage()
+                msg["Subject"] = subject
+                msg["From"] = from_email
+                msg["To"] = to_email
+                msg.set_content(body)
+
+                if use_ssl:
+                    with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=12) as server:
+                        server.login(smtp_user, smtp_password)
+                        server.send_message(msg)
+                else:
+                    with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
+                        server.starttls()
+                        server.login(smtp_user, smtp_password)
+                        server.send_message(msg)
+
+                sent_via_smtp = True
+                if emit_log:
+                    await emit_log(f"[{label}] ✉️ Successfully dispatched live email to {to_email} via SMTP ({smtp_host}:{smtp_port}).", level="info")
+            except Exception as e:
+                smtp_error = str(e)
+                logger.warning(f"SMTP dispatch failed: {e}. Saved local copy instead.")
+                if emit_log:
+                    await emit_log(f"[{label}] ⚠️ SMTP send error: {e}. Saved to Local Outbox.", level="warning")
+
         delivery_badge = (
             '<span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700;">✓ Delivered via Live SMTP</span>'
-            if has_smtp
+            if sent_via_smtp
             else '<span style="background: #fefce8; color: #a16207; border: 1px solid #fef08a; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700;">⚡ Captured in AgentOS Local Outbox (Dev Mode)</span>'
         )
 
@@ -114,39 +148,6 @@ class EmailNodeHandler(BaseNodeHandler):
   </div>
 </body>
 </html>"""
-
-        sent_via_smtp = False
-        smtp_error = None
-
-        if has_smtp:
-            if emit_log:
-                await emit_log(f"[{label}] 🔌 Connecting to live SMTP server {smtp_host}:{smtp_port}...", level="info")
-            try:
-                msg = EmailMessage()
-                msg["Subject"] = subject
-                msg["From"] = from_email
-                msg["To"] = to_email
-                msg.set_content(body)
-                msg.add_alternative(html_content, subtype="html")
-
-                if use_ssl:
-                    with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=12) as server:
-                        server.login(smtp_user, smtp_password)
-                        server.send_message(msg)
-                else:
-                    with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
-                        server.starttls()
-                        server.login(smtp_user, smtp_password)
-                        server.send_message(msg)
-
-                sent_via_smtp = True
-                if emit_log:
-                    await emit_log(f"[{label}] ✉️ Successfully dispatched live email to {to_email} via SMTP.", level="info")
-            except Exception as e:
-                smtp_error = str(e)
-                logger.warning(f"SMTP dispatch failed: {e}. Saved local copy instead.")
-                if emit_log:
-                    await emit_log(f"[{label}] ⚠️ SMTP send error: {e}. Saved to Local Outbox.", level="warning")
 
         # Save the preview file (with final status)
         with open(preview_file, "w", encoding="utf-8") as f:

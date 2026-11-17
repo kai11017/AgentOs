@@ -21,6 +21,92 @@ class TestSMTPRequest(BaseModel):
     smtpPassword: str = Field(..., description="SMTP password or Google App Password")
     toEmail: str = Field(..., description="Recipient email address to test sending")
     useSSL: bool = Field(False, description="Whether to use direct SSL/TLS instead of STARTTLS")
+    saveAsDefault: bool = Field(True, description="Save verified credentials as system default and apply to workflow email nodes")
+
+class SaveSMTPConfigRequest(BaseModel):
+    smtpHost: str
+    smtpPort: int = 587
+    smtpUser: str
+    smtpPassword: str
+    useSSL: bool = False
+    applyToAllWorkflows: bool = True
+
+def persist_smtp_to_env(host: str, port: int, user: str, password: str, use_ssl: bool = False):
+    """Updates os.environ and backend/.env file with verified SMTP credentials."""
+    os.environ["SMTP_HOST"] = host
+    os.environ["SMTP_PORT"] = str(port)
+    os.environ["SMTP_USER"] = user
+    os.environ["SMTP_PASSWORD"] = password
+    os.environ["SMTP_FROM"] = user
+    os.environ["SMTP_USE_SSL"] = "true" if use_ssl else "false"
+    os.environ["SMTP_DELIVERY_MODE"] = "smtp"
+
+    env_path = os.path.abspath("./backend/.env")
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+    keys_to_set = {
+        "SMTP_HOST": f'"{host}"',
+        "SMTP_PORT": str(port),
+        "SMTP_USER": f'"{user}"',
+        "SMTP_PASSWORD": f'"{password}"',
+        "SMTP_FROM": f'"{user}"',
+        "SMTP_USE_SSL": "true" if use_ssl else "false",
+        "SMTP_DELIVERY_MODE": '"smtp"',
+    }
+
+    new_lines = []
+    seen = set()
+    for line in lines:
+        stripped = line.strip()
+        matched_key = None
+        for k in keys_to_set:
+            if stripped.startswith(f"{k}=") or stripped.startswith(f"{k} ="):
+                matched_key = k
+                break
+        if matched_key:
+            new_lines.append(f"{matched_key}={keys_to_set[matched_key]}\n")
+            seen.add(matched_key)
+        else:
+            new_lines.append(line)
+
+    for k, v in keys_to_set.items():
+        if k not in seen:
+            new_lines.append(f"{k}={v}\n")
+
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+async def apply_smtp_to_workflow_nodes(host: str, port: int, user: str, password: str):
+    """Updates all email nodes in the database to live SMTP mode with credentials."""
+    try:
+        from backend.app.core.database import AsyncSessionLocal
+        from backend.app.models.workflow import WorkflowNodeModel
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(WorkflowNodeModel).where(
+                    (WorkflowNodeModel.definition_type == "email-send") |
+                    (WorkflowNodeModel.definition_type == "email")
+                )
+            )
+            nodes = result.scalars().all()
+            for node in nodes:
+                cfg = dict(node.config or {})
+                cfg["deliveryMode"] = "smtp"
+                cfg["smtpHost"] = host
+                cfg["smtpPort"] = port
+                cfg["smtpUser"] = user
+                cfg["smtpPassword"] = password
+                cfg["fromEmail"] = user
+                node.config = cfg
+            await session.commit()
+            logger.info(f"Applied live SMTP credentials across {len(nodes)} email workflow nodes.")
+    except Exception as e:
+        logger.warning(f"Failed to apply SMTP to workflow nodes: {e}")
 
 class EmailItemResponse(BaseModel):
     id: str
@@ -207,6 +293,12 @@ async def test_smtp_connection(req: TestSMTPRequest):
                 server.send_message(msg)
 
         logger.info(f"SMTP test successfully verified for {user} -> {to_email}")
+        
+        # Automatically persist credentials as system default and apply to workflow nodes
+        if req.saveAsDefault:
+            persist_smtp_to_env(host, port, user, password, req.useSSL)
+            await apply_smtp_to_workflow_nodes(host, port, user, password)
+
         return {
             "success": True,
             "message": f"SMTP authentication succeeded! Test email delivered to {to_email}.",
@@ -214,6 +306,7 @@ async def test_smtp_connection(req: TestSMTPRequest):
             "port": port,
             "user": user,
             "deliveredTo": to_email,
+            "savedAsDefault": req.saveAsDefault,
         }
     except smtplib.SMTPAuthenticationError as e:
         logger.warning(f"SMTP Authentication Error: {e}")
@@ -240,3 +333,49 @@ async def test_smtp_connection(req: TestSMTPRequest):
             "hint": hint,
             "resolvedHost": host,
         }
+
+@router.get("/smtp-config")
+async def get_smtp_config():
+    """Returns current active system SMTP configuration (with password masked)."""
+    host = os.getenv("SMTP_HOST", "")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER", "")
+    has_password = bool(os.getenv("SMTP_PASSWORD"))
+    delivery_mode = os.getenv("SMTP_DELIVERY_MODE", "local_outbox")
+
+    return {
+        "configured": bool(host and user and has_password),
+        "smtpHost": host,
+        "smtpPort": port,
+        "smtpUser": user,
+        "fromEmail": os.getenv("SMTP_FROM", user),
+        "deliveryMode": delivery_mode,
+        "hasPassword": has_password,
+        "maskedPassword": "••••••••••••••••" if has_password else "",
+    }
+
+@router.post("/save-smtp-config")
+async def save_smtp_config(req: SaveSMTPConfigRequest):
+    """Saves SMTP credentials system-wide and applies them to workflow nodes."""
+    user = req.smtpUser.strip()
+    host = sanitize_smtp_host(req.smtpHost, user)
+    port = req.smtpPort
+    password = req.smtpPassword.strip()
+
+    if not host or not user or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Host, username, and password are required.",
+        )
+
+    persist_smtp_to_env(host, port, user, password, req.useSSL)
+    if req.applyToAllWorkflows:
+        await apply_smtp_to_workflow_nodes(host, port, user, password)
+
+    return {
+        "success": True,
+        "message": f"SMTP credentials for {user} ({host}:{port}) saved as system default and applied to workflows.",
+        "host": host,
+        "port": port,
+        "user": user,
+    }

@@ -62,8 +62,35 @@ export const EmailOutboxModal: React.FC = () => {
     resolvedHost?: string;
   } | null>(null);
 
+  const [autoSaveWorkflows, setAutoSaveWorkflows] = useState(true);
+  const [smtpConfig, setSmtpConfig] = useState<{
+    configured: boolean;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpUser?: string;
+    deliveryMode?: string;
+  } | null>(null);
+
+  const fetchSmtpConfig = async () => {
+    try {
+      const res = await fetch(getApiEndpoint('/api/v1/emails/smtp-config'));
+      if (res.ok) {
+        const data = await res.json();
+        setSmtpConfig(data);
+        if (data.configured) {
+          if (data.smtpHost) setTestHost(data.smtpHost);
+          if (data.smtpPort) setTestPort(data.smtpPort);
+          if (data.smtpUser) setTestUser(data.smtpUser);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch smtp config:', err);
+    }
+  };
+
   const fetchEmails = async () => {
     setIsLoading(true);
+    fetchSmtpConfig();
     try {
       const res = await fetch(getApiEndpoint('/api/v1/emails'));
       if (res.ok) {
@@ -186,6 +213,7 @@ export const EmailOutboxModal: React.FC = () => {
           smtpPassword: testPassword.trim(),
           toEmail: testToEmail.trim(),
           useSSL: testPort === 465,
+          saveAsDefault: autoSaveWorkflows,
         }),
       });
       const data = await res.json();
@@ -589,6 +617,23 @@ export const EmailOutboxModal: React.FC = () => {
                   />
                 </div>
 
+                <div className="pt-1">
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs font-semibold text-emerald-950 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={autoSaveWorkflows}
+                      onChange={(e) => setAutoSaveWorkflows(e.target.checked)}
+                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <div>
+                      <div>Set as Active System Mail Server for all Workflows</div>
+                      <div className="text-[10px] font-normal text-emerald-800">
+                        Automatically enables Live SMTP across all workflow Send Email nodes so workflow runs send real emails.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
                 {smtpResult && (
                   <div
                     className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
@@ -611,6 +656,11 @@ export const EmailOutboxModal: React.FC = () => {
                       )}
                     </div>
                     <div>{smtpResult.message || smtpResult.error}</div>
+                    {smtpResult.success && autoSaveWorkflows && (
+                      <div className="text-[11px] font-semibold text-emerald-800 mt-1">
+                        ✓ Applied to all workflows! Any workflow execution containing Send Email will now dispatch real emails directly via SMTP.
+                      </div>
+                    )}
                     {smtpResult.hint && <div className="text-[11px] mt-1 text-slate-700">{smtpResult.hint}</div>}
                   </div>
                 )}
