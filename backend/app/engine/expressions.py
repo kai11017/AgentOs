@@ -5,12 +5,37 @@ from simpleeval import simple_eval, NameNotDefined, InvalidExpression
 # Regex to match {{ expression }}
 EXPRESSION_PATTERN = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
 
+class DotDict(dict):
+    """
+    Dictionary supporting JavaScript-like dot-notation property access and auto-wrapping nested dicts,
+    allowing templates like `json.summary`, `prev.status`, or `nodes['id'].output.body` to resolve seamlessly.
+    """
+    def __getattr__(self, name: str) -> Any:
+        val = self.get(name)
+        if isinstance(val, dict) and not isinstance(val, DotDict):
+            return DotDict(val)
+        return val
+
+    def __getitem__(self, name: Any) -> Any:
+        val = super().get(name)
+        if isinstance(val, dict) and not isinstance(val, DotDict):
+            return DotDict(val)
+        return val
+
+def to_dot_dict(val: Any) -> Any:
+    if isinstance(val, dict) and not isinstance(val, DotDict):
+        return DotDict({k: to_dot_dict(v) for k, v in val.items()})
+    if isinstance(val, list):
+        return [to_dot_dict(x) for x in val]
+    return val
+
 class ExpressionEvaluator:
     @staticmethod
     def evaluate_string(template: str, context: Dict[str, Any]) -> Any:
         """
         Safely evaluates {{ ... }} expressions inside strings using simpleeval.
-        Zero eval() usage.
+        Zero eval() usage. Supports JavaScript logical operators (||, &&, true, false, null)
+        and dot-notation attribute navigation on JSON contexts.
         """
         if not isinstance(template, str) or "{{" not in template:
             return template
@@ -33,18 +58,25 @@ class ExpressionEvaluator:
     def _eval_expr(expr: str, context: Dict[str, Any]) -> Any:
         try:
             # Map $json to json_data, $prev to prev_data, $nodes to nodes_data, $env to env
-            # simpleeval names cannot start with $, so we alias them cleanly
+            # simpleeval names cannot start with $, so we alias them cleanly and wrap in DotDict
             names = {
-                "json": context.get("$json", {}),
-                "prev": context.get("$prev", {}),
-                "nodes": context.get("$nodes", {}),
-                "env": context.get("$env", {}),
-                "execution": context.get("$execution", {"id": "exec-preview-001"}),
-                "workflow": context.get("$workflow", {"name": "Current Workflow"}),
+                "json": to_dot_dict(context.get("$json", {})),
+                "prev": to_dot_dict(context.get("$prev", {})),
+                "nodes": to_dot_dict(context.get("$nodes", {})),
+                "env": to_dot_dict(context.get("$env", {})),
+                "execution": to_dot_dict(context.get("$execution", {"id": "exec-preview-001"})),
+                "workflow": to_dot_dict(context.get("$workflow", {"name": "Current Workflow"})),
             }
-            # Also allow direct access if expressions use $json, $prev, $nodes, $env, $execution, $workflow
+            # Normalize JavaScript logical operators and keywords into Python equivalents
             normalized_expr = (
-                expr.replace("$json", "json")
+                expr.replace("||", " or ")
+                .replace("&&", " and ")
+                .replace("===", "==")
+                .replace("!==", "!=")
+                .replace("true", "True")
+                .replace("false", "False")
+                .replace("null", "None")
+                .replace("$json", "json")
                 .replace("$prev", "prev")
                 .replace("$nodes", "nodes")
                 .replace("$env", "env")

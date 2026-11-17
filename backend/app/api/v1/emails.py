@@ -32,7 +32,7 @@ class SaveSMTPConfigRequest(BaseModel):
     applyToAllWorkflows: bool = True
 
 def persist_smtp_to_env(host: str, port: int, user: str, password: str, use_ssl: bool = False):
-    """Updates os.environ and backend/.env file with verified SMTP credentials."""
+    """Updates os.environ and .env files with verified SMTP credentials."""
     os.environ["SMTP_HOST"] = host
     os.environ["SMTP_PORT"] = str(port)
     os.environ["SMTP_USER"] = user
@@ -40,12 +40,6 @@ def persist_smtp_to_env(host: str, port: int, user: str, password: str, use_ssl:
     os.environ["SMTP_FROM"] = user
     os.environ["SMTP_USE_SSL"] = "true" if use_ssl else "false"
     os.environ["SMTP_DELIVERY_MODE"] = "smtp"
-
-    env_path = os.path.abspath("./backend/.env")
-    lines = []
-    if os.path.exists(env_path):
-        with open(env_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
 
     keys_to_set = {
         "SMTP_HOST": f'"{host}"',
@@ -57,27 +51,34 @@ def persist_smtp_to_env(host: str, port: int, user: str, password: str, use_ssl:
         "SMTP_DELIVERY_MODE": '"smtp"',
     }
 
-    new_lines = []
-    seen = set()
-    for line in lines:
-        stripped = line.strip()
-        matched_key = None
-        for k in keys_to_set:
-            if stripped.startswith(f"{k}=") or stripped.startswith(f"{k} ="):
-                matched_key = k
-                break
-        if matched_key:
-            new_lines.append(f"{matched_key}={keys_to_set[matched_key]}\n")
-            seen.add(matched_key)
-        else:
-            new_lines.append(line)
+    env_paths = [os.path.abspath("./backend/.env"), os.path.abspath("./.env")]
+    for env_path in env_paths:
+        lines = []
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
 
-    for k, v in keys_to_set.items():
-        if k not in seen:
-            new_lines.append(f"{k}={v}\n")
+        new_lines = []
+        seen = set()
+        for line in lines:
+            stripped = line.strip()
+            matched_key = None
+            for k in keys_to_set:
+                if stripped.startswith(f"{k}=") or stripped.startswith(f"{k} ="):
+                    matched_key = k
+                    break
+            if matched_key:
+                new_lines.append(f"{matched_key}={keys_to_set[matched_key]}\n")
+                seen.add(matched_key)
+            else:
+                new_lines.append(line)
 
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.writelines(new_lines)
+        for k, v in keys_to_set.items():
+            if k not in seen:
+                new_lines.append(f"{k}={v}\n")
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
 
 async def apply_smtp_to_workflow_nodes(host: str, port: int, user: str, password: str):
     """Updates all email nodes in the database to live SMTP mode with credentials."""
@@ -87,24 +88,23 @@ async def apply_smtp_to_workflow_nodes(host: str, port: int, user: str, password
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(WorkflowNodeModel).where(
-                    (WorkflowNodeModel.definition_type == "email-send") |
-                    (WorkflowNodeModel.definition_type == "email")
-                )
-            )
+            result = await session.execute(select(WorkflowNodeModel))
             nodes = result.scalars().all()
+            updated_count = 0
             for node in nodes:
+                d_type = (node.definition_type or "").lower()
                 cfg = dict(node.config or {})
-                cfg["deliveryMode"] = "smtp"
-                cfg["smtpHost"] = host
-                cfg["smtpPort"] = port
-                cfg["smtpUser"] = user
-                cfg["smtpPassword"] = password
-                cfg["fromEmail"] = user
-                node.config = cfg
+                if d_type in ("email-send", "email") or "email" in d_type or "toEmail" in cfg or "fromEmail" in cfg:
+                    cfg["deliveryMode"] = "smtp"
+                    cfg["smtpHost"] = host
+                    cfg["smtpPort"] = port
+                    cfg["smtpUser"] = user
+                    cfg["smtpPassword"] = password
+                    cfg["fromEmail"] = user
+                    node.config = cfg
+                    updated_count += 1
             await session.commit()
-            logger.info(f"Applied live SMTP credentials across {len(nodes)} email workflow nodes.")
+            logger.info(f"Applied live SMTP credentials across {updated_count} email workflow nodes.")
     except Exception as e:
         logger.warning(f"Failed to apply SMTP to workflow nodes: {e}")
 

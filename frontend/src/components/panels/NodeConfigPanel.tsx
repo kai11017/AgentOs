@@ -111,13 +111,13 @@ export const NodeConfigPanel: React.FC = () => {
       // Email node profile
       if (nodeType === 'email-send' || nodeLabel.includes('email') || nodeLabel.includes('mail')) {
         initialTailoredConfig = {
-          deliveryMode: 'local_outbox',
-          fromEmail: 'rippika@gmail.com',
-          toEmail: 'team@company.com',
+          deliveryMode: 'smtp',
+          fromEmail: 'ritikmistry712@gmail.com',
+          toEmail: 'mr24csb1a37@student.nitw.ac.in',
           subject: 'Weekly Research Summary & Key Insights',
           bodyType: 'HTML',
           emailBody:
-            'Hello Team,\n\nPlease find attached the automated research analysis and action items synthesized by the AI Agent:\n\n{{ $json.summary || $json.body }}',
+            'Hello Team,\n\nPlease find attached the automated research analysis and action items synthesized by the AI Agent:\n\n{{ $json.summary or $json.body }}',
           onError: 'Retry twice, then notify me',
           ...initialTailoredConfig,
         };

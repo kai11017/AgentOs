@@ -109,9 +109,9 @@ class AgentNodeHandler(BaseNodeHandler):
 
         # 3. High-Speed Cloud Fallback via Gemini (if local Ollama timed out, stalled, or failed)
         if settings.GEMINI_API_KEY:
-            await log(f"[AI Agent] ⚡ Local model timed out. Automatically routing to Google Gemini 3.5 Flash for high-speed contextual reasoning...", level="info")
+            await log(f"[AI Agent] ⚡ Local model is running slowly or timed out. Handing off to Google Gemini Flash for high-speed contextual reasoning...", level="info")
             cloud_fallback = await self._execute_gemini_loop(
-                model_name="gemini-3.5-flash",
+                model_name="gemini-flash-lite-latest",
                 system_instruction=system_instruction,
                 user_prompt=initial_user_prompt,
                 selected_tools=selected_tools,
@@ -146,7 +146,8 @@ class AgentNodeHandler(BaseNodeHandler):
         tools_used_set: Set[str],
         sources_found: List[str],
     ) -> Optional[Dict[str, Any]]:
-        gemini_model = "gemini-3.5-flash"
+        # Use Google's ultra-fast flash-lite model for near-instant (2-4s) rich contextual reasoning
+        gemini_model = "gemini-flash-lite-latest"
         gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={settings.GEMINI_API_KEY}"
         gemini_tools = global_tool_registry.to_gemini_tools(selected_tools)
 
@@ -158,18 +159,34 @@ class AgentNodeHandler(BaseNodeHandler):
         iteration = 0
 
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
+            timeout_cfg = httpx.Timeout(connect=5.0, read=50.0, write=10.0, pool=5.0)
+            async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 while iteration < max_iterations:
                     iteration += 1
                     payload: Dict[str, Any] = {
                         "contents": contents,
                     }
-                    if gemini_tools:
+                    # Once we have gathered tool observations (or after 2 tool iterations),
+                    # omit tools from the request so Gemini immediately synthesizes the comprehensive final text
+                    if gemini_tools and (iteration < 3 or not sources_found):
                         payload["tools"] = gemini_tools
 
-                    res = await client.post(gemini_url, json=payload)
-                    if res.status_code != 200:
-                        logger.warning(f"Gemini API returned status {res.status_code}: {res.text[:200]}")
+                    res = None
+                    active_model = gemini_model
+                    candidate_models = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+                    for candidate_model in candidate_models:
+                        candidate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent?key={settings.GEMINI_API_KEY}"
+                        try:
+                            candidate_res = await client.post(candidate_url, json=payload)
+                            if candidate_res.status_code == 200:
+                                res = candidate_res
+                                active_model = candidate_model
+                                break
+                            logger.warning(f"Gemini model '{candidate_model}' returned {candidate_res.status_code}. Failing over to next model...")
+                        except Exception as req_ex:
+                            logger.warning(f"Gemini model '{candidate_model}' request error: {repr(req_ex)}. Failing over to next model...")
+
+                    if not res or res.status_code != 200:
                         break
 
                     data = res.json()
@@ -189,7 +206,7 @@ class AgentNodeHandler(BaseNodeHandler):
                             tool_call_part = p
                             break
 
-                    if tool_call_part:
+                    if tool_call_part and iteration < 4:
                         fn_call = tool_call_part["functionCall"]
                         fn_name = fn_call.get("name")
                         fn_args = fn_call.get("args", {})
@@ -247,17 +264,17 @@ class AgentNodeHandler(BaseNodeHandler):
                         await log(f"[AI Agent] 💡 Final synthesis synthesized ({iteration} turns, {total_tokens} tokens).", level="info")
                         return {
                             "status": "completed",
-                            "model": gemini_model,
+                            "model": active_model,
                             "summary": final_text.strip(),
                             "toolsUsed": list(tools_used_set) or ["Reasoning Engine"],
                             "iterations": iteration,
                             "tokens": total_tokens,
                             "sources": list(dict.fromkeys(sources_found)) or ["google.ai"],
-                            "provider": "Google AI Cloud (Gemini 3.5 Flash)",
+                            "provider": "Google AI Cloud (Gemini Flash)",
                         }
 
         except Exception as e:
-            logger.warning(f"Gemini autonomous loop encountered error: {e}. Falling back...")
+            logger.warning(f"Gemini autonomous loop encountered error: {repr(e)}. Falling back...")
 
         return None
 
