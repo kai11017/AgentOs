@@ -57,12 +57,23 @@ async def instantiate_template(template_id: str, db: AsyncSession = Depends(get_
     )
     db.add(new_workflow)
 
-    # Remap node IDs to prevent collisions
-    node_id_map: Dict[str, str] = {}
+    # 1. First map all old node IDs to fresh unique IDs
+    node_id_map: Dict[str, str] = {
+        node_def["id"]: f"node-{uuid.uuid4().hex[:8]}"
+        for node_def in target_tpl.get("nodes", [])
+    }
+
+    # 2. Instantiate nodes with remapped IDs and remapped expression references in config
+    import json
     for node_def in target_tpl.get("nodes", []):
         old_id = node_def["id"]
-        fresh_node_id = f"node-{uuid.uuid4().hex[:8]}"
-        node_id_map[old_id] = fresh_node_id
+        fresh_node_id = node_id_map[old_id]
+
+        # Remap any upstream node ID references inside config expressions (e.g. {{nodes['old_id'].output.emails}})
+        raw_cfg_str = json.dumps(node_def.get("config", {}))
+        for old_ref, new_ref in node_id_map.items():
+            raw_cfg_str = raw_cfg_str.replace(old_ref, new_ref)
+        remapped_config = json.loads(raw_cfg_str)
 
         db_node = WorkflowNodeModel(
             id=fresh_node_id,
@@ -71,7 +82,7 @@ async def instantiate_template(template_id: str, db: AsyncSession = Depends(get_
             definition_type=node_def.get("definitionType", "default"),
             position_x=float(node_def.get("position_x", 0)),
             position_y=float(node_def.get("position_y", 0)),
-            config=node_def.get("config", {}),
+            config=remapped_config,
         )
         db.add(db_node)
 

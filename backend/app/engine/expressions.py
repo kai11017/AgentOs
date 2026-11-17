@@ -59,11 +59,21 @@ class ExpressionEvaluator:
         try:
             # Map $json to json_data, $prev to prev_data, $nodes to nodes_data, $env to env
             # simpleeval names cannot start with $, so we alias them cleanly and wrap in DotDict
+            raw_nodes = context.get("$nodes") or context.get("nodes", {})
+            unified_nodes = {}
+            if isinstance(raw_nodes, dict):
+                for nid, nval in raw_nodes.items():
+                    if isinstance(nval, dict):
+                        inner_output = nval.get("output") if isinstance(nval.get("output"), dict) else nval
+                        unified_nodes[nid] = {**inner_output, **nval, "output": inner_output, "data": inner_output}
+                    else:
+                        unified_nodes[nid] = nval
+
             names = {
-                "json": to_dot_dict(context.get("$json", {})),
-                "prev": to_dot_dict(context.get("$prev", {})),
-                "nodes": to_dot_dict(context.get("$nodes", {})),
-                "env": to_dot_dict(context.get("$env", {})),
+                "json": to_dot_dict(context.get("$json") or context.get("json", {})),
+                "prev": to_dot_dict(context.get("$prev") or context.get("prev", {})),
+                "nodes": to_dot_dict(unified_nodes),
+                "env": to_dot_dict(context.get("$env") or context.get("env", {})),
                 "execution": to_dot_dict(context.get("$execution", {"id": "exec-preview-001"})),
                 "workflow": to_dot_dict(context.get("$workflow", {"name": "Current Workflow"})),
             }

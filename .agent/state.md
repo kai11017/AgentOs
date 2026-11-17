@@ -7,9 +7,17 @@
 1171b42
 
 ## Current Milestone
-Phase 8: End-to-End Real-Time Execution, Proxy Integration, Dynamic Email Outbox, and Ollama Autonomous Pipeline
+Phase 9: Broadcast Intelligence, CSV/Excel Ingestion, and "Message to Many" Multi-Recipient Outreach
 
 ## Completed
+- **"Message to Many" Multi-Recipient Broadcast Pipeline**:
+  - Implemented `DocReferenceNodeHandler` (`backend/app/engine/handlers/doc_reference.py`) supporting zero-dependency extraction of recipient emails from CSV, Excel (`.xlsx` via native `zipfile` XML parsing), JSON arrays, and unstructured text contact blocks.
+  - Upgraded `EmailNodeHandler` (`backend/app/engine/handlers/email.py`) to detect multi-recipient distribution lists, iterate over each recipient, generate individual styled HTML emails, log live progress per recipient, write individual HTML preview files to disk (`./outputs/emails/`), and return comprehensive broadcast reports (`mode: "message_to_many"`).
+  - Enhanced `ExpressionEvaluator` (`backend/app/engine/expressions.py`) and `DAGExecutor` (`backend/app/engine/executor.py`) to provide unified context access across `nodes`, `json`, and `prev`, allowing `nodes['node-id'].output.emails`, `nodes['node-id'].data.emails`, and direct `nodes['node-id'].emails` to resolve seamlessly.
+  - Created prebuilt workflow template `tpl-message-to-many` ("Broadcast Intelligence & Multi-Recipient Outreach (Message to Many)") with 5 connected nodes: Manual Trigger $\rightarrow$ Recipient Contacts (CSV/Excel) $\rightarrow$ AI Campaign Synthesizer $\rightarrow$ Broadcast Dispatcher $\rightarrow$ Campaign Dispatch Report.
+  - Implemented automatic node ID remapping in template instantiation (`backend/app/api/v1/templates.py`), ensuring all expression references update cleanly to freshly generated database UUIDs.
+  - Added frontend template gallery entry, modal preset in `CreateWorkflowModal.tsx`, CSV contact editor in `NodeConfigPanel.tsx`, and dynamic "📢 Message-to-Many Active" badge.
+  - Added Test #19 in `backend/tests/run_tests.py` and dedicated unit tests in `backend/tests/test_message_to_many.py`. Verified that all 19 production architecture tests pass and verified live end-to-end multi-recipient execution against the running FastAPI daemon.
 - **Local Ollama Inference Acceleration & Anti-Thinking Direct Mode**:
   - Identified root cause of sluggish reasoning in `qwen3.5:4b`: Ollama tags revealed it has the `thinking` capability enabled, outputting hundreds of internal `<think> ... </think>` tokens at ~4 tokens/sec on CPU before answering.
   - Benchmarked and verified that passing `"think": False` directly in Ollama chat payload disables internal reasoning loops, slashing generation latency from 120s+ to ~20s.

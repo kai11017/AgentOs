@@ -679,8 +679,85 @@ async def main():
         print("  Schedule run-now API endpoint verified")
         print("  [PASS] Dynamic DAG Routing, Conditional Branching, File Exporter & Automations Scheduler")
 
+        print("\n--- 19. Testing Message to Many & CSV/Excel Contact Broadcast Pipeline ---")
+        from backend.app.engine.handlers.doc_reference import DocReferenceNodeHandler, parse_contact_data
+        from backend.app.engine.handlers.email import EmailNodeHandler
+
+        # 1. Contact Extractor
+        csv_sample = (
+            "Name,Email,Role\n"
+            "Alice Smith,alice@example.com,Lead\n"
+            "Bob Student,mr24csb1a37@student.nitw.ac.in,Analyst\n"
+            "Ritik Mistry,ritikmistry712@gmail.com,Executive"
+        )
+        parsed = parse_contact_data(csv_sample)
+        assert len(parsed["emails"]) == 3
+        assert "ritikmistry712@gmail.com" in parsed["emails"]
+        assert "mr24csb1a37@student.nitw.ac.in" in parsed["emails"]
+        print(f"  Contact extractor verified ({len(parsed['emails'])} contacts parsed from CSV)")
+
+        # 2. Doc Reference Handler
+        doc_handler = DocReferenceNodeHandler()
+        doc_res = await doc_handler.execute(
+            {
+                "id": "node-doc-contacts",
+                "data": {
+                    "label": "Recipient Contacts",
+                    "config": {
+                        "title": "Stakeholders List",
+                        "contactsCsv": csv_sample,
+                    },
+                },
+            },
+            context={},
+        )
+        assert doc_res["status"] == "completed"
+        assert len(doc_res["emails"]) == 3
+        print(f"  DocReferenceNodeHandler executed ({doc_res['totalRecipients']} recipients extracted)")
+
+        # 3. Email Node Message to Many Dispatch
+        email_handler = EmailNodeHandler()
+        email_res = await email_handler.execute(
+            {
+                "id": "node-email-broadcast",
+                "data": {
+                    "label": "Broadcast Email",
+                    "config": {
+                        "deliveryMode": "local_outbox_only",
+                        "fromEmail": "ritikmistry712@gmail.com",
+                        "toEmail": "{{$json.emails}}",
+                        "subject": "Q4 Engineering All-Hands Update",
+                        "emailBody": "## Key Update\nWe are launching autonomous multi-agent pipelines for all teams.",
+                    },
+                },
+            },
+            context={"$json": {"emails": doc_res["emails"]}},
+        )
+        assert email_res["status"] == "sent"
+        assert email_res["mode"] == "message_to_many"
+        assert email_res["totalRecipients"] == 3
+        assert len(email_res["previewFiles"]) == 3
+        print(f"  EmailNodeHandler Message-to-Many verified ({len(email_res['previewFiles'])} previews generated)")
+
+        # 4. Templates API verification & Instantiation
+        res_tpls = await client.get("/api/v1/templates")
+        assert res_tpls.status_code == 200
+        tpl_ids = [t["id"] for t in res_tpls.json()]
+        assert "tpl-message-to-many" in tpl_ids
+        print("  Template 'tpl-message-to-many' discovered in Template Registry")
+
+        res_instantiate = await client.post("/api/v1/templates/tpl-message-to-many/instantiate")
+        assert res_instantiate.status_code == 201
+        created_wf = res_instantiate.json()
+        assert created_wf["name"] == "Broadcast Intelligence & Multi-Recipient Outreach (Message to Many)"
+        res_get_wf = await client.get(f"/api/v1/workflows/{created_wf['workflow_id']}")
+        assert res_get_wf.status_code == 200
+        assert len(res_get_wf.json()["nodes"]) == 5
+        print(f"  Template instantiated successfully as workflow '{created_wf['workflow_id']}' (5 nodes, 4 edges)")
+        print("  [PASS] Message to Many & CSV/Excel Contact Broadcast Pipeline")
+
     print("\n==========================================")
-    print("ALL 18 PRODUCTION ARCHITECTURE TESTS PASSED!")
+    print("ALL 19 PRODUCTION ARCHITECTURE TESTS PASSED!")
     print("==========================================")
 
 

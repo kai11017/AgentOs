@@ -475,14 +475,22 @@ export const NodeConfigPanel: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <FieldLabelWithExpression label="To Email (Recipient) *" fieldName="toEmail" />
+                    <FieldLabelWithExpression label="To Email (Recipient or Broadcast List) *" fieldName="toEmail" />
                     <input
                       type="text"
                       value={config.toEmail || ''}
                       onChange={(e) => handleFieldChange('toEmail', e.target.value)}
-                      placeholder="e.g. team@company.com or {{$json.email}}"
+                      placeholder="e.g. team@company.com, {{$json.emails}}, or CSV list"
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
                     />
+                    <div className="text-[10px] text-[#78857e] flex items-center justify-between">
+                      <span>Supports single email, comma list, or <code>{`{{$json.emails}}`}</code>.</span>
+                      {((config.toEmail || '').includes(',') || (config.toEmail || '').includes('emails') || (config.toEmail || '').includes('recipients')) && (
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          📢 Message-to-Many Active
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1">
@@ -798,6 +806,37 @@ export const NodeConfigPanel: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* CSV / Contact List Table & Paste Input (Message to Many) */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-[#5c6861]">
+                        Contact Recipients (CSV / Text List)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleFieldChange('contactsCsv', 'Name,Email,Department\nRitik Mistry,ritikmistry712@gmail.com,Executive Lead\nStudent Contact,mr24csb1a37@student.nitw.ac.in,Research Analyst\nEngineering Team,team@company.com,Stakeholder')}
+                        className="text-[9px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                      >
+                        Insert Sample CSV
+                      </button>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={config.contactsCsv || ''}
+                      onChange={(e) => handleFieldChange('contactsCsv', e.target.value)}
+                      placeholder="Paste CSV rows or comma-separated emails, e.g.&#10;Name,Email,Role&#10;Alice,alice@example.com,Lead"
+                      className="w-full px-3 py-2 text-xs font-mono bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d] leading-relaxed resize-none"
+                    />
+                    <div className="flex items-center justify-between text-[10px] text-[#78857e]">
+                      <span>Extracts emails to <code>$json.emails</code> for Message-to-Many dispatch.</span>
+                      {((config.contactsCsv || '').match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || []).length > 0 && (
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          {((config.contactsCsv || '').match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || []).length} emails found
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-[#5c6861]">

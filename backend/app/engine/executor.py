@@ -21,6 +21,7 @@ from backend.app.engine.handlers.file_export import FileExportNodeHandler
 from backend.app.engine.handlers.notification import NotificationNodeHandler
 from backend.app.engine.handlers.email import EmailNodeHandler
 from backend.app.engine.handlers.retrieval import InfoRetrievalNodeHandler
+from backend.app.engine.handlers.doc_reference import DocReferenceNodeHandler
 from backend.app.engine.expressions import ExpressionEvaluator
 from backend.app.models.execution import ExecutionModel, ExecutionLogModel
 from backend.app.api.v1.credentials import resolve_credential
@@ -44,7 +45,10 @@ HANDLERS = {
     "vector-search": KnowledgeNodeHandler(),
     "knowledge": KnowledgeNodeHandler(),
     "knowledge-base": KnowledgeNodeHandler(),
-    "doc-reference": KnowledgeNodeHandler(),
+    "doc-reference": DocReferenceNodeHandler(),
+    "document-reference": DocReferenceNodeHandler(),
+    "csv-reader": DocReferenceNodeHandler(),
+    "excel-reader": DocReferenceNodeHandler(),
     "python-execution": CodeNodeHandler(),
     "javascript-skill": CodeNodeHandler(),
     "code-runner": CodeNodeHandler(),
@@ -179,8 +183,11 @@ class WorkflowExecutor:
         prev_output = parent_outputs[-1] if parent_outputs else {}
         context = {
             "$json": merged_input,
+            "json": merged_input,
             "$prev": prev_output,
+            "prev": prev_output,
             "$nodes": self.node_outputs,
+            "nodes": self.node_outputs,
             "execution_id": self.execution_id,
             "emit_log": lambda msg, level="info": self.emit_log(msg, level=level, node_id=node_id),
             "get_credential": lambda cred_name: resolve_credential(cred_name, self.db),

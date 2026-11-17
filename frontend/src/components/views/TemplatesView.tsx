@@ -6,6 +6,16 @@ import { Search, Sparkles, Layers, ArrowRight, Loader2 } from 'lucide-react';
 
 const FALLBACK_TEMPLATES: TemplateItemSummary[] = [
   {
+    id: 'tpl-message-to-many',
+    name: 'Broadcast Intelligence & Multi-Recipient Outreach (Message to Many)',
+    category: 'Email & Outreach',
+    description: 'Automates bulk email campaigns by ingesting recipient contacts from an attached CSV or Excel spreadsheet, synthesizing personalized executive intelligence with an AI agent, and dispatching formatted briefings to all recipients at once via SMTP.',
+    icon: 'Send',
+    tags: ['Message to Many', 'Bulk Email', 'CSV / Excel Contacts', 'SMTP Broadcast', 'AI Campaign'],
+    node_count: 5,
+    edge_count: 4,
+  },
+  {
     id: 'tpl-autonomous-researcher',
     name: 'Autonomous Web & Market Research Agent',
     category: 'Autonomous AI',
@@ -75,7 +85,7 @@ export const TemplatesView: React.FC = () => {
     fetchTemplates();
   }, []);
 
-  const categories = ['All', 'Autonomous AI', 'Scheduled Automations', 'Human-in-the-Loop', 'Developer Tools'];
+  const categories = ['All', 'Email & Outreach', 'Autonomous AI', 'Scheduled Automations', 'Human-in-the-Loop', 'Developer Tools'];
 
   const handleUseTemplate = async (templateId: string) => {
     try {
