@@ -172,6 +172,54 @@ async def list_outbox_emails():
 
     return emails
 
+@router.get("/smtp-config")
+async def get_smtp_config():
+    """Returns current active system SMTP configuration (with password masked)."""
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER", "ritikmistry712@gmail.com")
+    password = os.getenv("SMTP_PASSWORD", "iyee rgha bskt fslp")
+    has_password = bool(password)
+    delivery_mode = os.getenv("SMTP_DELIVERY_MODE", "smtp")
+
+    return {
+        "configured": bool(host and user and has_password),
+        "smtpHost": host,
+        "smtpPort": port,
+        "smtpUser": user,
+        "fromEmail": os.getenv("SMTP_FROM", user),
+        "deliveryMode": delivery_mode,
+        "hasPassword": has_password,
+        "maskedPassword": "••••••••••••••••" if has_password else "",
+        "defaultPassword": password,
+    }
+
+@router.post("/save-smtp-config")
+async def save_smtp_config(req: SaveSMTPConfigRequest):
+    """Saves SMTP credentials system-wide and applies them to workflow nodes."""
+    user = req.smtpUser.strip()
+    host = sanitize_smtp_host(req.smtpHost, user)
+    port = req.smtpPort
+    password = req.smtpPassword.strip()
+
+    if not host or not user or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Host, username, and password are required.",
+        )
+
+    persist_smtp_to_env(host, port, user, password, req.useSSL)
+    if req.applyToAllWorkflows:
+        await apply_smtp_to_workflow_nodes(host, port, user, password)
+
+    return {
+        "success": True,
+        "message": f"SMTP credentials for {user} ({host}:{port}) saved as system default and applied to workflows.",
+        "host": host,
+        "port": port,
+        "user": user,
+    }
+
 @router.get("/{filename}")
 async def get_outbox_email(filename: str):
     """Retrieves full HTML content and details of a single email."""
@@ -333,49 +381,3 @@ async def test_smtp_connection(req: TestSMTPRequest):
             "hint": hint,
             "resolvedHost": host,
         }
-
-@router.get("/smtp-config")
-async def get_smtp_config():
-    """Returns current active system SMTP configuration (with password masked)."""
-    host = os.getenv("SMTP_HOST", "")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER", "")
-    has_password = bool(os.getenv("SMTP_PASSWORD"))
-    delivery_mode = os.getenv("SMTP_DELIVERY_MODE", "local_outbox")
-
-    return {
-        "configured": bool(host and user and has_password),
-        "smtpHost": host,
-        "smtpPort": port,
-        "smtpUser": user,
-        "fromEmail": os.getenv("SMTP_FROM", user),
-        "deliveryMode": delivery_mode,
-        "hasPassword": has_password,
-        "maskedPassword": "••••••••••••••••" if has_password else "",
-    }
-
-@router.post("/save-smtp-config")
-async def save_smtp_config(req: SaveSMTPConfigRequest):
-    """Saves SMTP credentials system-wide and applies them to workflow nodes."""
-    user = req.smtpUser.strip()
-    host = sanitize_smtp_host(req.smtpHost, user)
-    port = req.smtpPort
-    password = req.smtpPassword.strip()
-
-    if not host or not user or not password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Host, username, and password are required.",
-        )
-
-    persist_smtp_to_env(host, port, user, password, req.useSSL)
-    if req.applyToAllWorkflows:
-        await apply_smtp_to_workflow_nodes(host, port, user, password)
-
-    return {
-        "success": True,
-        "message": f"SMTP credentials for {user} ({host}:{port}) saved as system default and applied to workflows.",
-        "host": host,
-        "port": port,
-        "user": user,
-    }

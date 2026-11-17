@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     API_SECRET_KEY: str = Field(default_factory=lambda: secrets.token_hex(32))
     REQUIRE_AUTH: bool = False  # Set to True in production desktop builds
     
+    # Default SMTP Mail Credentials (Preconfigured with user override option)
+    SMTP_HOST: str = Field(default_factory=lambda: os.getenv("SMTP_HOST", "smtp.gmail.com"))
+    SMTP_PORT: int = Field(default_factory=lambda: int(os.getenv("SMTP_PORT", "587")))
+    SMTP_USER: str = Field(default_factory=lambda: os.getenv("SMTP_USER", "ritikmistry712@gmail.com"))
+    SMTP_PASSWORD: str = Field(default_factory=lambda: os.getenv("SMTP_PASSWORD", "iyee rgha bskt fslp"))
+    SMTP_FROM: str = Field(default_factory=lambda: os.getenv("SMTP_FROM", "ritikmistry712@gmail.com"))
+    SMTP_USE_SSL: bool = Field(default_factory=lambda: os.getenv("SMTP_USE_SSL", "false").lower() == "true")
+    SMTP_DELIVERY_MODE: str = Field(default_factory=lambda: os.getenv("SMTP_DELIVERY_MODE", "smtp"))
+
     # Strict CORS Policy
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

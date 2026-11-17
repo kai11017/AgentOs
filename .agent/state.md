@@ -7,9 +7,15 @@
 064cbe8
 
 ## Current Milestone
-Phase 9: Broadcast Intelligence, CSV/Excel Ingestion, and "Message to Many" Multi-Recipient Outreach
+Phase 10: Default Verified SMTP Credentials & Universal User Configuration
 
 ## Completed
+- **Configured Verified Default SMTP Credentials (`ritikmistry712@gmail.com`)**:
+  - Configured default sender identity (`ritikmistry712@gmail.com`) and 16-character Google App Password (`iyee rgha bskt fslp`) across `.env`, `backend/.env`, and `Settings` in [`config.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/core/config.py).
+  - Pre-filled working credentials in [`NodeConfigPanel.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/panels/NodeConfigPanel.tsx) and [`EmailOutboxModal.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/modals/EmailOutboxModal.tsx), while retaining full flexibility for users to edit host, port, username, or password anytime.
+  - Adjusted endpoint routing in [`emails.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/api/v1/emails.py) so `/smtp-config` and `/save-smtp-config` are evaluated before dynamic `/{filename}` routes.
+  - Verified live SMTP verification endpoint (`POST /api/v1/emails/test-smtp`), confirming successful authentication and real-time delivery to `ritikmistry712@gmail.com`.
+  - Updated bootstrap workflow node defaults in [`main.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/main.py) and template registry in [`registry.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/templates/registry.py).
 - **Replaced Dummy Name 'Rippika' with 'Joe' Across Application**:
   - Replaced `Rippika N.` and initials badge (`RN` $\rightarrow$ `J`) in [`AppSidebar.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/layout/AppSidebar.tsx).
   - Updated greeting banner in [`HomeView.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/views/HomeView.tsx) to "Good afternoon, Joe".

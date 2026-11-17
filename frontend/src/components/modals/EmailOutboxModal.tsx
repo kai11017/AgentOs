@@ -49,9 +49,9 @@ export const EmailOutboxModal: React.FC = () => {
   const [selectedProvider, setSelectedProvider] = useState<'gmail' | 'outlook' | 'custom'>('gmail');
   const [testHost, setTestHost] = useState('smtp.gmail.com');
   const [testPort, setTestPort] = useState(587);
-  const [testUser, setTestUser] = useState('');
-  const [testPassword, setTestPassword] = useState('');
-  const [testToEmail, setTestToEmail] = useState('');
+  const [testUser, setTestUser] = useState('ritikmistry712@gmail.com');
+  const [testPassword, setTestPassword] = useState('iyee rgha bskt fslp');
+  const [testToEmail, setTestToEmail] = useState('ritikmistry712@gmail.com');
   const [hostWarning, setHostWarning] = useState<string | null>(null);
   const [isTestingSMTP, setIsTestingSMTP] = useState(false);
   const [smtpResult, setSmtpResult] = useState<{
@@ -69,6 +69,7 @@ export const EmailOutboxModal: React.FC = () => {
     smtpPort?: number;
     smtpUser?: string;
     deliveryMode?: string;
+    defaultPassword?: string;
   } | null>(null);
 
   const fetchSmtpConfig = async () => {
@@ -81,6 +82,7 @@ export const EmailOutboxModal: React.FC = () => {
           if (data.smtpHost) setTestHost(data.smtpHost);
           if (data.smtpPort) setTestPort(data.smtpPort);
           if (data.smtpUser) setTestUser(data.smtpUser);
+          if (data.defaultPassword) setTestPassword(data.defaultPassword);
         }
       }
     } catch (err) {

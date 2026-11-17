@@ -240,8 +240,10 @@ class EmailNodeHandler(BaseNodeHandler):
         primary_recipient = recipients[0] if recipients else "team@company.com"
 
         # 2. Resolve Sender
-        raw_from = config.get("fromEmail") or config.get("sender") or os.getenv("SMTP_FROM", "agentos-notifications@localflow.ai")
+        raw_from = config.get("fromEmail") or config.get("sender") or os.getenv("SMTP_FROM", "ritikmistry712@gmail.com")
         from_email = ExpressionEvaluator.evaluate_string(str(raw_from), context).strip()
+        if not from_email:
+            from_email = "ritikmistry712@gmail.com"
 
         # 3. Resolve Subject
         raw_subject = config.get("subject") or "Automated Executive Brief & Workflow Summary"
@@ -276,13 +278,19 @@ class EmailNodeHandler(BaseNodeHandler):
 
         # 5. Check delivery mode & SMTP credentials
         delivery_mode = config.get("deliveryMode") or os.getenv("SMTP_DELIVERY_MODE", "smtp")
-        raw_host = config.get("smtpHost") or os.getenv("SMTP_HOST", "")
-        raw_user = config.get("smtpUser") or os.getenv("SMTP_USER") or from_email
+        raw_host = config.get("smtpHost") or os.getenv("SMTP_HOST", "smtp.gmail.com")
+        raw_user = config.get("smtpUser") or os.getenv("SMTP_USER") or from_email or "ritikmistry712@gmail.com"
         smtp_host = sanitize_smtp_host(raw_host, raw_user)
         smtp_port = int(config.get("smtpPort") or os.getenv("SMTP_PORT", "587"))
         smtp_user = raw_user
-        smtp_password = config.get("smtpPassword") or os.getenv("SMTP_PASSWORD")
-        use_ssl = config.get("useSSL") or (smtp_port == 465) or (os.getenv("SMTP_USE_SSL") == "true")
+
+        # User's configured password with system fallback
+        raw_password = config.get("smtpPassword") or os.getenv("SMTP_PASSWORD", "iyee rgha bskt fslp")
+        if raw_password in ("••••••••••••••••", "", None):
+            raw_password = os.getenv("SMTP_PASSWORD", "iyee rgha bskt fslp")
+        smtp_password = raw_password.strip() if raw_password else "iyee rgha bskt fslp"
+
+        use_ssl = config.get("useSSL") or (smtp_port == 465) or (os.getenv("SMTP_USE_SSL", "false").lower() == "true")
 
         system_has_smtp = bool(smtp_host and smtp_user and smtp_password)
         should_send_live = (delivery_mode in ("smtp", "live_smtp")) or (system_has_smtp and delivery_mode != "local_outbox_only")

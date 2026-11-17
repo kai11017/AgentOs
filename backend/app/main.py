@@ -60,7 +60,16 @@ async def seed_initial_demo_workflow():
                     definition_type="email-send",
                     position_x=740.0,
                     position_y=180.0,
-                    config={"toEmail": "team@company.com", "subject": "Executive Brief: Q4 AI Strategy", "fromEmail": "joe@gmail.com"},
+                    config={
+                        "deliveryMode": "smtp",
+                        "toEmail": "mr24csb1a37@student.nitw.ac.in",
+                        "subject": "Executive Brief: Q4 AI Strategy",
+                        "fromEmail": "ritikmistry712@gmail.com",
+                        "smtpUser": "ritikmistry712@gmail.com",
+                        "smtpHost": "smtp.gmail.com",
+                        "smtpPort": 587,
+                        "smtpPassword": "iyee rgha bskt fslp",
+                    },
                 ),
                 WorkflowNodeModel(
                     id="node-notion-1",

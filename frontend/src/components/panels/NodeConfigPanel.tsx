@@ -113,6 +113,10 @@ export const NodeConfigPanel: React.FC = () => {
         initialTailoredConfig = {
           deliveryMode: 'smtp',
           fromEmail: 'ritikmistry712@gmail.com',
+          smtpUser: 'ritikmistry712@gmail.com',
+          smtpHost: 'smtp.gmail.com',
+          smtpPort: 587,
+          smtpPassword: 'iyee rgha bskt fslp',
           toEmail: 'mr24csb1a37@student.nitw.ac.in',
           subject: 'Weekly Research Summary & Key Insights',
           bodyType: 'HTML',
@@ -431,7 +435,7 @@ export const NodeConfigPanel: React.FC = () => {
                         <label className="text-[10px] text-[#5c6861]">Username / Sender Email</label>
                         <input
                           type="email"
-                          value={config.smtpUser || config.fromEmail || ''}
+                          value={config.smtpUser || config.fromEmail || 'ritikmistry712@gmail.com'}
                           onChange={(e) => {
                             const val = e.target.value;
                             handleFieldChange('smtpUser', val);
@@ -440,7 +444,7 @@ export const NodeConfigPanel: React.FC = () => {
                               handleFieldChange('smtpHost', 'smtp.gmail.com');
                             }
                           }}
-                          placeholder="yourname@gmail.com"
+                          placeholder="ritikmistry712@gmail.com"
                           className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
                         />
                       </div>
@@ -451,11 +455,11 @@ export const NodeConfigPanel: React.FC = () => {
                           <span className="text-[9px] text-[#86948d]">Google App Password</span>
                         </label>
                         <input
-                          type="password"
-                          value={config.smtpPassword || ''}
+                          type="text"
+                          value={config.smtpPassword ?? 'iyee rgha bskt fslp'}
                           onChange={(e) => handleFieldChange('smtpPassword', e.target.value)}
-                          placeholder="16-character App Password"
-                          className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
+                          placeholder="16-character App Password (e.g. iyee rgha bskt fslp)"
+                          className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d] font-mono"
                         />
                       </div>
                     </div>
@@ -467,9 +471,9 @@ export const NodeConfigPanel: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={config.fromEmail || 'joe@gmail.com'}
+                      value={config.fromEmail || 'ritikmistry712@gmail.com'}
                       onChange={(e) => handleFieldChange('fromEmail', e.target.value)}
-                      placeholder="e.g. sender@company.com"
+                      placeholder="ritikmistry712@gmail.com"
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 text-[#19221d]"
                     />
                   </div>
