@@ -1,38 +1,36 @@
 # Current State
 
 ## Last Updated
-2026-11-16
+2026-11-17
 
 ## Current Commit
-a80a2be
+d8501a5
 
 ## Current Milestone
-Phase 8: Workflow Creation Dialog, Database Canvas Auto-Saving, Email Node with Simulated Outbox & Live SMTP, Info Retrieval Node, and In-App Email Outbox
+Phase 8: End-to-End Real-Time Execution, Proxy Integration, Dynamic Email Outbox, and Ollama Autonomous Pipeline
 
 ## Completed
+- **Unified Same-Origin Proxy & CORS Elimination**:
+  - Configured Vite development server proxy in `frontend/vite.config.ts` targeting `http://127.0.0.1:8005` for `/api`, `/health`, and `/ws` (with `ws: true`).
+  - Completely eliminated browser CORS and Private Network Access (PNA) blocks between `localhost:3000` and `127.0.0.1:8005`.
+  - Mounted dual WebSocket routes in FastAPI (`/ws/executions/{id}` and `/api/v1/ws/executions/{id}`) ensuring universal client compatibility.
+- **Elimination of Mock Fallbacks & Fake Badges**:
+  - Removed all silent `catch { return mockApiAdapter... }` fallbacks in `frontend/src/api/http-adapter.ts`.
+  - Replaced hardcoded node badges (`Completed 6.4s`) in `BaseNode.tsx` with dynamic execution state.
+  - Replaced hardcoded mock logs in `CanvasBottomDashboard.tsx` with live streaming logs and clean ready states.
 - **Workflow Creation Modal & Database Persistence**:
-  - Built `CreateWorkflowModal.tsx` asking for workflow name, description, starter presets (Clean Canvas, AI Research & Email, Info Retrieval & Export, Conditional Quality Gate), and tags.
+  - Built `CreateWorkflowModal.tsx` prompting for workflow name, description, starter presets (Clean Canvas, AI Research & Email, Info Retrieval & Export, Conditional Quality Gate), and tags.
   - Automatically saves the newly created workflow directly into PostgreSQL and routes to the canvas editor.
-  - Refactored `WorkflowsView.tsx` and `HomeView.tsx` to remove all static mock arrays and display real database workflows with accurate node counts and status.
-- **Workflow Canvas Auto-Save & Manual Save**:
-  - Updated `WorkflowToolbar.tsx` with an explicit "Save" / "Saved" status button with dirty indicator.
-  - Made "Run workflow" asynchronously auto-persist the latest canvas nodes and edges to PostgreSQL before executing.
-  - Added inline rename for workflows that automatically updates PostgreSQL on enter/blur.
 - **Email Node with Simulated Outbox & Live SMTP**:
-  - Built dedicated `EmailNodeHandler` (`backend/app/engine/handlers/email.py`) supporting dynamic expression evaluation for sender, recipient, subject, and body.
-  - Transparent Delivery Modes:
-    - **Simulated Local Outbox (Dev Mode)**: Captures agent-dispatched emails without requiring SMTP credentials, saves styled HTML previews to `./outputs/emails/`, and emits real-time WebSocket progress.
-    - **Live SMTP**: Dispatches real emails via Gmail (port 587 STARTTLS with Google App Passwords) or custom SMTP servers (port 465 SSL or 587).
-  - Built `EmailOutboxModal.tsx` in frontend and wired "Outbox" button on toolbar and inspector. Provides a full interactive email viewer with live search, email header inspection, HTML iframe rendering, and SMTP connection testing.
-  - Added backend endpoints: `GET /api/v1/emails`, `GET /api/v1/emails/{filename}`, `DELETE /api/v1/emails/{filename}`, and `POST /api/v1/emails/test-smtp`.
-- **Info Retrieval & Search Node**:
-  - Built `InfoRetrievalNodeHandler` (`backend/app/engine/handlers/retrieval.py`) supporting DuckDuckGo live web search, public URL fetching, and document knowledge base retrieval.
-  - Added `InfoRetrieval.ts` node definition and rich inspector configuration in `NodeConfigPanel.tsx`.
+  - `EmailNodeHandler` dispatches emails with dynamic expression evaluation for sender, recipient, subject, and body.
+  - Dispatched emails are automatically captured into `./outputs/emails/` as formatted HTML and viewable directly in the in-app **Email Outbox** modal.
+  - Verified live execution dispatching research reports from `ritikmistry712@gmail.com` to `mr24csb1a37@student.nitw.ac.in`.
 - **Dynamic Ollama Model Auto-Discovery**:
-  - Updated `AgentNodeHandler` to query Ollama's `/api/tags` and automatically bind the installed model (e.g. `qwen3.5:4b`) when `llama3:latest` or missing models are requested, preventing 404 breaks.
-- **Full Architecture Test Validation**:
+  - `AgentNodeHandler` automatically discovers and binds local models (e.g. `qwen3.5:4b`) via `/api/tags`, preventing 404 errors.
+- **Verification & Services Active**:
   - 18/18 production architecture tests verified passing.
-  - Frontend production build compiling with 0 errors.
+  - Production frontend build passed with 0 errors.
+  - Active background servers running: FastAPI backend on port 8005, Vite frontend on port 3000.
 
 ## Completed
 - **Architecture Finalized & Hardened**:
