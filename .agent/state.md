@@ -7,9 +7,22 @@
 1253ea5
 
 ## Current Milestone
-Phase 10: Default Verified SMTP Credentials & Universal User Configuration
+Phase 11: Workflow Redundancy Elimination & Clean Template Presentation
 
 ## Completed
+- **Eliminated Workflow Redundancy & Purged Duplicate Workflows**:
+  - Identified 57 duplicate workflows accumulated during test runs and template tests in PostgreSQL.
+  - Purged all redundant duplicates and empty workflows, consolidating the workspace into 6 clean, distinct workflows:
+    1. `Research Workflow` (`demo-workflow-1`, 5 nodes)
+    2. `Broadcast Intelligence & Multi-Recipient Outreach (Message to Many)` (5 nodes)
+    3. `Autonomous Web & Market Research Agent` (4 nodes)
+    4. `Scheduled Daily System & Security Digest` (3 nodes)
+    5. `Human-in-the-Loop Approval & Action Gate` (5 nodes)
+    6. `Sandboxed Python Code Review & Linter` (3 nodes)
+  - Updated [`run_tests.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/tests/run_tests.py) so automated tests clean up any newly instantiated test workflows immediately upon assertion, preventing future accumulation.
+- **Removed Featured Green Hero Banner Card from Templates**:
+  - Removed the dark-green hero banner card ("Autonomous Web & Market Research Agent" with "Use Blueprint" button) from [`TemplatesView.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/views/TemplatesView.tsx).
+  - The Templates view now displays a clean, uniform grid of categorized blueprints without redundant hero overlays.
 - **Configured Verified Default SMTP Credentials (`ritikmistry712@gmail.com`)**:
   - Configured default sender identity (`ritikmistry712@gmail.com`) and 16-character Google App Password (`iyee rgha bskt fslp`) across `.env`, `backend/.env`, and `Settings` in [`config.py`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/backend/app/core/config.py).
   - Pre-filled working credentials in [`NodeConfigPanel.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/panels/NodeConfigPanel.tsx) and [`EmailOutboxModal.tsx`](file:///c:/Users/ritik/OneDrive/Documents/agent_workflow/frontend/src/components/modals/EmailOutboxModal.tsx), while retaining full flexibility for users to edit host, port, username, or password anytime.

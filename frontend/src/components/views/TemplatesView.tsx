@@ -162,40 +162,6 @@ export const TemplatesView: React.FC = () => {
           ))}
         </div>
 
-        {/* Featured Hero Banner Card */}
-        <div className="bg-gradient-to-r from-[#0e2118] via-[#153424] to-[#1e4d35] text-white rounded-3xl p-7 shadow-lg border border-[#2b5a41] flex items-center justify-between">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#f59e0b] bg-[#224430] border border-[#f59e0b]/40 px-2.5 py-0.5 rounded-md shadow-2xs">
-                <Sparkles className="w-3 h-3 fill-current" />
-                Featured Autonomous Agent
-              </span>
-              <span className="text-[11px] font-semibold text-[#86efac]">
-                4 Nodes • Hybrid Gemini/Qwen
-              </span>
-            </div>
-            <h2 className="font-display text-xl font-black tracking-tight text-white">
-              Autonomous Web & Market Research Agent
-            </h2>
-            <p className="font-sans text-xs text-[#b8d4c4] leading-relaxed">
-              Autonomously explores live web sources using DuckDuckGo, parses HTML bodies with SSRF protection, extracts key intelligence, and checkpoints findings into persistent memory.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={instantiatingId !== null}
-            onClick={() => handleUseTemplate('tpl-autonomous-researcher')}
-            className="flex items-center gap-2 px-5 py-3 bg-[#f59e0b] hover:bg-[#d97706] active:bg-[#b45309] text-[#0e2118] font-black text-xs rounded-xl shadow-[0_2px_12px_rgba(245,158,11,0.45)] transition-all shrink-0 cursor-pointer disabled:opacity-50"
-          >
-            {instantiatingId === 'tpl-autonomous-researcher' ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#0e2118]" />
-            ) : (
-              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-            )}
-            <span>Use Blueprint</span>
-          </button>
-        </div>
-
         {/* 2x2 or 3-Column Grid of Blueprint Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filtered.map((item) => {

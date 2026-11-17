@@ -247,6 +247,7 @@ async def main():
         imported_wf = res_import.json()
         assert imported_wf["id"].startswith("wf-")
         assert len(imported_wf["nodes"]) >= 1
+        await client.delete(f"/api/v1/workflows/{imported_wf['id']}")
         print("  [PASS] Workflow .agentflow.json Export & Import")
 
         # ─── 13. Testing Encrypted Credential Vault ───────────────────────
@@ -337,6 +338,7 @@ async def main():
         inst_wf = res_get_wf.json()
         assert len(inst_wf["nodes"]) == 4
         assert len(inst_wf["edges"]) == 3
+        await client.delete(f"/api/v1/workflows/{inst_wf_id}")
         print(f"  [PASS] Template Instantiation (Created '{inst_wf['name']}' with {len(inst_wf['nodes'])} nodes)")
 
         # ─── 16. Testing Local Document RAG & Vector Knowledge Base ─────
@@ -754,6 +756,7 @@ async def main():
         assert res_get_wf.status_code == 200
         assert len(res_get_wf.json()["nodes"]) == 5
         print(f"  Template instantiated successfully as workflow '{created_wf['workflow_id']}' (5 nodes, 4 edges)")
+        await client.delete(f"/api/v1/workflows/{created_wf['workflow_id']}")
         print("  [PASS] Message to Many & CSV/Excel Contact Broadcast Pipeline")
 
     print("\n==========================================")
