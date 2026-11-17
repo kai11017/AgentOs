@@ -73,12 +73,12 @@ class AgentNodeHandler(BaseNodeHandler):
         sources_found: List[str] = []
 
         # 1. Cloud Execution via Google AI Gemini (if API key present and not strictly local requested)
-        is_cloud_candidate = settings.GEMINI_API_KEY and (
+        is_cloud_primary = settings.GEMINI_API_KEY and (
             any(k in model_name.lower() for k in ["gemini", "google", "cloud", "flash", "pro"])
             or not is_ollama_reachable(settings.OLLAMA_BASE_URL, timeout=0.1)
         )
 
-        if is_cloud_candidate:
+        if is_cloud_primary:
             cloud_res = await self._execute_gemini_loop(
                 model_name=model_name,
                 system_instruction=system_instruction,
@@ -107,7 +107,23 @@ class AgentNodeHandler(BaseNodeHandler):
             if local_res:
                 return local_res
 
-        # 3. Autonomous Heuristic Fallback (e.g. offline sandbox or external connectivity blocked)
+        # 3. High-Speed Cloud Fallback via Gemini (if local Ollama timed out, stalled, or failed)
+        if settings.GEMINI_API_KEY:
+            await log(f"[AI Agent] ⚡ Local model timed out. Automatically routing to Google Gemini 3.5 Flash for high-speed contextual reasoning...", level="info")
+            cloud_fallback = await self._execute_gemini_loop(
+                model_name="gemini-3.5-flash",
+                system_instruction=system_instruction,
+                user_prompt=initial_user_prompt,
+                selected_tools=selected_tools,
+                max_iterations=max_iterations,
+                log=log,
+                tools_used_set=tools_used_set,
+                sources_found=sources_found,
+            )
+            if cloud_fallback:
+                return cloud_fallback
+
+        # 4. Autonomous Heuristic Fallback (only when completely offline without API keys or local LLM)
         return await self._execute_heuristic_fallback(
             node_label=node_label,
             model_name=model_name,
@@ -293,8 +309,8 @@ class AgentNodeHandler(BaseNodeHandler):
 
         iteration = 0
         try:
-            # 18.0s timeout per turn to protect against CPU hangs
-            timeout = httpx.Timeout(connect=1.5, read=18.0, write=5.0, pool=1.0)
+            # 6.0s timeout per turn to protect against CPU hangs and immediately fallback to Gemini
+            timeout = httpx.Timeout(connect=1.0, read=6.0, write=3.0, pool=1.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 while iteration < max_iterations:
                     iteration += 1
