@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 from backend.app.engine.handlers.base import BaseNodeHandler
 from backend.app.engine.expressions import ExpressionEvaluator
+from backend.app.api.v1.emails import sanitize_smtp_host
 
 logger = logging.getLogger("agentos.handlers.email")
 
@@ -57,9 +58,11 @@ class EmailNodeHandler(BaseNodeHandler):
 
         # 5. Check delivery mode & SMTP credentials
         delivery_mode = config.get("deliveryMode") or "local_outbox"
-        smtp_host = config.get("smtpHost") or os.getenv("SMTP_HOST")
+        raw_host = config.get("smtpHost") or os.getenv("SMTP_HOST", "")
+        raw_user = config.get("smtpUser") or os.getenv("SMTP_USER") or from_email
+        smtp_host = sanitize_smtp_host(raw_host, raw_user)
         smtp_port = int(config.get("smtpPort") or os.getenv("SMTP_PORT", "587"))
-        smtp_user = config.get("smtpUser") or os.getenv("SMTP_USER")
+        smtp_user = raw_user
         smtp_password = config.get("smtpPassword") or os.getenv("SMTP_PASSWORD")
         use_ssl = config.get("useSSL") or (smtp_port == 465)
 

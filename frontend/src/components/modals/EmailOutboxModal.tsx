@@ -29,6 +29,13 @@ interface OutboxEmail {
   hasHtml: boolean;
 }
 
+const getApiEndpoint = (path: string) => {
+  if (typeof window !== 'undefined' && window.location.port === '3000') {
+    return path;
+  }
+  return `http://127.0.0.1:8005${path}`;
+};
+
 export const EmailOutboxModal: React.FC = () => {
   const { isEmailOutboxOpen, setEmailOutboxOpen } = useUIStore();
   const [emails, setEmails] = useState<OutboxEmail[]>([]);
@@ -39,18 +46,26 @@ export const EmailOutboxModal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'outbox' | 'smtp-test'>('outbox');
 
   // SMTP Test state
+  const [selectedProvider, setSelectedProvider] = useState<'gmail' | 'outlook' | 'custom'>('gmail');
   const [testHost, setTestHost] = useState('smtp.gmail.com');
   const [testPort, setTestPort] = useState(587);
   const [testUser, setTestUser] = useState('');
   const [testPassword, setTestPassword] = useState('');
   const [testToEmail, setTestToEmail] = useState('');
+  const [hostWarning, setHostWarning] = useState<string | null>(null);
   const [isTestingSMTP, setIsTestingSMTP] = useState(false);
-  const [smtpResult, setSmtpResult] = useState<{ success: boolean; message?: string; error?: string; hint?: string } | null>(null);
+  const [smtpResult, setSmtpResult] = useState<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    hint?: string;
+    resolvedHost?: string;
+  } | null>(null);
 
   const fetchEmails = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8005/api/v1/emails');
+      const res = await fetch(getApiEndpoint('/api/v1/emails'));
       if (res.ok) {
         const data: OutboxEmail[] = await res.json();
         setEmails(data);
@@ -68,7 +83,7 @@ export const EmailOutboxModal: React.FC = () => {
 
   const loadEmailContent = async (filename: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8005/api/v1/emails/${encodeURIComponent(filename)}`);
+      const res = await fetch(getApiEndpoint(`/api/v1/emails/${encodeURIComponent(filename)}`));
       if (res.ok) {
         const data = await res.json();
         setEmailHtml(data.html || '');
@@ -81,7 +96,7 @@ export const EmailOutboxModal: React.FC = () => {
   const handleDelete = async (filename: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await fetch(`http://127.0.0.1:8005/api/v1/emails/${encodeURIComponent(filename)}`, {
+      await fetch(getApiEndpoint(`/api/v1/emails/${encodeURIComponent(filename)}`), {
         method: 'DELETE',
       });
       setEmails((prev) => prev.filter((item) => item.filename !== filename));
@@ -94,21 +109,82 @@ export const EmailOutboxModal: React.FC = () => {
     }
   };
 
+  const handleHostChange = (val: string) => {
+    if (val.includes('@')) {
+      const email = val.trim();
+      const domain = email.split('@')[1]?.toLowerCase() || '';
+      if (domain === 'student.nitw.ac.in' || domain.includes('nitw.ac.in') || domain === 'gmail.com') {
+        setTestHost('smtp.gmail.com');
+        setTestPort(587);
+        setSelectedProvider('gmail');
+        setHostWarning(`You typed an email address. For ${domain} (Google Workspace), the SMTP Host is smtp.gmail.com.`);
+        if (!testUser) setTestUser(email);
+        return;
+      } else if (domain.includes('outlook') || domain.includes('office') || domain.includes('hotmail')) {
+        setTestHost('smtp.office365.com');
+        setTestPort(587);
+        setSelectedProvider('outlook');
+        setHostWarning(`You typed an email address. The SMTP Host has been set to smtp.office365.com.`);
+        if (!testUser) setTestUser(email);
+        return;
+      }
+    }
+    setHostWarning(null);
+    setTestHost(val);
+  };
+
+  const handleUserChange = (val: string) => {
+    setTestUser(val);
+    const lower = val.toLowerCase().trim();
+    if (lower.endsWith('@student.nitw.ac.in') || lower.endsWith('@gmail.com') || lower.includes('@nitw.ac.in')) {
+      if (testHost !== 'smtp.gmail.com') {
+        setTestHost('smtp.gmail.com');
+        setTestPort(587);
+        setSelectedProvider('gmail');
+        setHostWarning(`Google Workspace account detected: SMTP Host set to smtp.gmail.com (Port 587).`);
+      }
+    }
+  };
+
+  const handleSelectProvider = (prov: 'gmail' | 'outlook' | 'custom') => {
+    setSelectedProvider(prov);
+    setHostWarning(null);
+    if (prov === 'gmail') {
+      setTestHost('smtp.gmail.com');
+      setTestPort(587);
+    } else if (prov === 'outlook') {
+      setTestHost('smtp.office365.com');
+      setTestPort(587);
+    }
+  };
+
   const handleTestSMTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsTestingSMTP(true);
     setSmtpResult(null);
 
+    // Auto-sanitize host in case user still has an email typed
+    let finalHost = testHost.trim();
+    if (finalHost.includes('@')) {
+      const dom = finalHost.split('@')[1]?.toLowerCase() || '';
+      if (dom.includes('nitw.ac.in') || dom === 'gmail.com') {
+        finalHost = 'smtp.gmail.com';
+      } else {
+        finalHost = `smtp.${dom}`;
+      }
+      setTestHost(finalHost);
+    }
+
     try {
-      const res = await fetch('http://127.0.0.1:8005/api/v1/emails/test-smtp', {
+      const res = await fetch(getApiEndpoint('/api/v1/emails/test-smtp'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          smtpHost: testHost,
+          smtpHost: finalHost,
           smtpPort: testPort,
-          smtpUser: testUser,
-          smtpPassword: testPassword,
-          toEmail: testToEmail,
+          smtpUser: testUser.trim(),
+          smtpPassword: testPassword.trim(),
+          toEmail: testToEmail.trim(),
           useSSL: testPort === 465,
         }),
       });
@@ -392,14 +468,64 @@ export const EmailOutboxModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Mail Provider Selector */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#5c6861]">Mail Provider Preset</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProvider('gmail')}
+                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer ${
+                      selectedProvider === 'gmail'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs'
+                        : 'bg-white border-[#ded8cc] text-[#5c6861] hover:bg-[#fbf9f5]'
+                    }`}
+                  >
+                    Google / NITW GSuite
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProvider('outlook')}
+                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer ${
+                      selectedProvider === 'outlook'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs'
+                        : 'bg-white border-[#ded8cc] text-[#5c6861] hover:bg-[#fbf9f5]'
+                    }`}
+                  >
+                    Microsoft 365 / Outlook
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProvider('custom')}
+                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer ${
+                      selectedProvider === 'custom'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs'
+                        : 'bg-white border-[#ded8cc] text-[#5c6861] hover:bg-[#fbf9f5]'
+                    }`}
+                  >
+                    Custom Server
+                  </button>
+                </div>
+              </div>
+
+              {hostWarning && (
+                <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-700 shrink-0" />
+                  <span>{hostWarning}</span>
+                </div>
+              )}
+
               <form onSubmit={handleTestSMTP} className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2 space-y-1">
-                    <label className="text-[11px] font-semibold text-[#5c6861]">SMTP Host *</label>
+                    <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
+                      <span>SMTP Host Server *</span>
+                      <span className="text-[10px] text-[#86948d] font-normal">e.g. smtp.gmail.com</span>
+                    </label>
                     <input
                       type="text"
                       value={testHost}
-                      onChange={(e) => setTestHost(e.target.value)}
+                      onChange={(e) => handleHostChange(e.target.value)}
                       placeholder="smtp.gmail.com"
                       className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 text-[#19221d]"
                       required
@@ -419,12 +545,15 @@ export const EmailOutboxModal: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#5c6861]">SMTP Username / Sender Email *</label>
+                  <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
+                    <span>SMTP Username / Your Email Address *</span>
+                    <span className="text-[10px] text-[#86948d] font-normal">Sender identity</span>
+                  </label>
                   <input
                     type="email"
                     value={testUser}
-                    onChange={(e) => setTestUser(e.target.value)}
-                    placeholder="yourname@gmail.com"
+                    onChange={(e) => handleUserChange(e.target.value)}
+                    placeholder="mr24csb1a37@student.nitw.ac.in"
                     className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-emerald-600 text-[#19221d]"
                     required
                   />
@@ -432,15 +561,15 @@ export const EmailOutboxModal: React.FC = () => {
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-[#5c6861] flex items-center justify-between">
-                    <span>SMTP Password / App Password *</span>
-                    <span className="text-[10px] text-[#86948d]">Never exposed</span>
+                    <span>Google App Password (16 Characters) *</span>
+                    <span className="text-[10px] text-[#86948d]">Not your portal password</span>
                   </label>
                   <div className="relative">
                     <input
                       type="password"
                       value={testPassword}
                       onChange={(e) => setTestPassword(e.target.value)}
-                      placeholder="••••••••••••••••"
+                      placeholder="xxxx xxxx xxxx xxxx"
                       className="w-full pl-3 pr-10 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-emerald-600 text-[#19221d]"
                       required
                     />
@@ -454,7 +583,7 @@ export const EmailOutboxModal: React.FC = () => {
                     type="email"
                     value={testToEmail}
                     onChange={(e) => setTestToEmail(e.target.value)}
-                    placeholder="yourpersonal@gmail.com"
+                    placeholder="ritikmistry712@gmail.com"
                     className="w-full px-3 py-2 text-xs bg-white border border-[#ded8cc] rounded-xl outline-none focus:border-emerald-600 text-[#19221d]"
                     required
                   />

@@ -122,14 +122,57 @@ async def delete_outbox_email(filename: str):
         return {"success": True, "message": f"Deleted {clean_name}"}
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email not found")
 
+def sanitize_smtp_host(host_input: str, user_email: str = "") -> str:
+    """
+    Sanitizes and auto-resolves SMTP host inputs.
+    Detects when a user enters an email address instead of the mail server host.
+    """
+    raw = (host_input or "").strip()
+    user = (user_email or "").strip().lower()
+
+    # If the host field contains an email address (e.g. mr24csb1a37@student.nitw.ac.in)
+    if "@" in raw:
+        domain = raw.split("@")[-1].strip().lower()
+    elif not raw or raw.lower() in ("auto", "default", "localhost", "127.0.0.1", "none"):
+        domain = user.split("@")[-1].strip().lower() if "@" in user else ""
+    else:
+        domain = raw.lower()
+
+    # Known educational and public providers using Google Workspace
+    if (
+        domain in ("gmail.com", "googlemail.com", "student.nitw.ac.in", "nitw.ac.in")
+        or domain.endswith(".nitw.ac.in")
+        or "google" in domain
+    ):
+        return "smtp.gmail.com"
+
+    # Microsoft 365 / Outlook
+    if (
+        domain in ("outlook.com", "hotmail.com", "live.com", "office365.com")
+        or "office" in domain
+        or "microsoft" in domain
+    ):
+        return "smtp.office365.com"
+
+    # Yahoo
+    if "yahoo" in domain:
+        return "smtp.mail.yahoo.com"
+
+    # If raw was an email address but domain wasn't directly matched
+    if "@" in raw:
+        return f"smtp.{domain}"
+
+    return raw
+
 @router.post("/test-smtp")
 async def test_smtp_connection(req: TestSMTPRequest):
     """
     Validates SMTP credentials by connecting, authenticating, and dispatching a test verification email.
+    Auto-corrects email addresses entered as hosts (e.g. resolves @student.nitw.ac.in to smtp.gmail.com).
     """
-    host = req.smtpHost.strip()
-    port = req.smtpPort
     user = req.smtpUser.strip()
+    host = sanitize_smtp_host(req.smtpHost, user)
+    port = req.smtpPort
     password = req.smtpPassword.strip()
     to_email = req.toEmail.strip()
 
@@ -175,16 +218,25 @@ async def test_smtp_connection(req: TestSMTPRequest):
     except smtplib.SMTPAuthenticationError as e:
         logger.warning(f"SMTP Authentication Error: {e}")
         error_msg = str(e)
-        if "google" in host.lower() or "5.7.8" in error_msg:
-            error_msg += " (Hint: Google requires a 16-character App Password, not your standard Google account password. Create one at https://myaccount.google.com/apppasswords)"
+        hint = "Check your username and password."
+        if "google" in host.lower() or "5.7.8" in error_msg or "nitw.ac.in" in user.lower():
+            hint = "Google Workspace & Gmail require a 16-character App Password (not your normal college portal password). Enable 2FA on your Google Account and generate an App Password at https://myaccount.google.com/apppasswords"
+            error_msg = "Google/NITW Workspace authentication rejected your password. Standard account passwords cannot be used for SMTP; a 16-character Google App Password is required."
         return {
             "success": False,
-            "error": f"Authentication failed: {error_msg}",
-            "hint": "Check username and App Password",
+            "error": error_msg,
+            "hint": hint,
+            "resolvedHost": host,
         }
     except Exception as e:
         logger.warning(f"SMTP Connection Error: {e}")
+        err_str = str(e)
+        hint = None
+        if "getaddrinfo failed" in err_str:
+            hint = f"Hostname '{host}' could not be resolved. For Gmail or NITW GSuite, the correct host is 'smtp.gmail.com'."
         return {
             "success": False,
-            "error": f"Failed to connect or send via {host}:{port}: {str(e)}",
+            "error": f"Failed to connect or send via {host}:{port}: {err_str}",
+            "hint": hint,
+            "resolvedHost": host,
         }

@@ -393,11 +393,25 @@ export const NodeConfigPanel: React.FC = () => {
 
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] text-[#5c6861]">Host</label>
+                          <label className="text-[10px] text-[#5c6861] flex items-center justify-between">
+                            <span>Host</span>
+                            <span className="text-[9px] text-[#86948d]">e.g. smtp.gmail.com</span>
+                          </label>
                           <input
                             type="text"
                             value={config.smtpHost || 'smtp.gmail.com'}
-                            onChange={(e) => handleFieldChange('smtpHost', e.target.value)}
+                            onChange={(e) => {
+                              let val = e.target.value;
+                              if (val.includes('@')) {
+                                const dom = val.split('@')[1]?.toLowerCase() || '';
+                                if (dom.includes('nitw.ac.in') || dom === 'gmail.com') {
+                                  val = 'smtp.gmail.com';
+                                } else if (dom.includes('outlook') || dom.includes('office')) {
+                                  val = 'smtp.office365.com';
+                                }
+                              }
+                              handleFieldChange('smtpHost', val);
+                            }}
                             placeholder="smtp.gmail.com"
                             className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
                           />
@@ -419,8 +433,12 @@ export const NodeConfigPanel: React.FC = () => {
                           type="email"
                           value={config.smtpUser || config.fromEmail || ''}
                           onChange={(e) => {
-                            handleFieldChange('smtpUser', e.target.value);
-                            handleFieldChange('fromEmail', e.target.value);
+                            const val = e.target.value;
+                            handleFieldChange('smtpUser', val);
+                            handleFieldChange('fromEmail', val);
+                            if (val.includes('@nitw.ac.in') || val.includes('@gmail.com')) {
+                              handleFieldChange('smtpHost', 'smtp.gmail.com');
+                            }
                           }}
                           placeholder="yourname@gmail.com"
                           className="w-full px-2 py-1 text-xs bg-white border border-[#ded8cc] rounded-lg outline-none text-[#19221d]"
