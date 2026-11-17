@@ -2,8 +2,16 @@ import { create } from 'zustand';
 import type { Execution, ExecutionLog, ExecutionStatus } from '@/types/workflow';
 import { getApiAdapter } from '@/api';
 
-const WS_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8005')
-  .replace(/^http/, 'ws');
+const getWsBase = () => {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (window.location.port === '3000') {
+      return `${proto}//${window.location.host}`;
+    }
+  }
+  return 'ws://127.0.0.1:8005';
+};
 
 interface ExecutionState {
   // Current execution
@@ -60,7 +68,7 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
     get().disconnectWebSocket();
 
     try {
-      const wsUrl = `${WS_BASE}/ws/executions/${executionId}`;
+      const wsUrl = `${getWsBase()}/ws/executions/${executionId}`;
       const ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {

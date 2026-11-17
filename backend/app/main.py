@@ -132,6 +132,10 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+# Also expose WebSocket endpoint at root path for universal client compatibility
+from backend.app.api.v1.websockets import router as websockets_root_router
+app.include_router(websockets_root_router)
+
 @app.get("/health")
 async def health_check():
     return {

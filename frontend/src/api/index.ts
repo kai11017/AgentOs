@@ -16,7 +16,10 @@ export function getApiAdapter(): WorkflowApiAdapter {
 
 export async function checkBackendConnection(): Promise<boolean> {
   try {
-    const res = await fetch('http://127.0.0.1:8005/health', { method: 'GET' });
+    const url = typeof window !== 'undefined' && window.location.port === '3000'
+      ? '/health'
+      : 'http://127.0.0.1:8005/health';
+    const res = await fetch(url, { method: 'GET' });
     return res.ok;
   } catch {
     return false;
