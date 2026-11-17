@@ -4,12 +4,19 @@
 2026-11-17
 
 ## Current Commit
-32a2259
+1171b42
 
 ## Current Milestone
 Phase 8: End-to-End Real-Time Execution, Proxy Integration, Dynamic Email Outbox, and Ollama Autonomous Pipeline
 
 ## Completed
+- **Local Ollama Inference Acceleration & Anti-Thinking Direct Mode**:
+  - Identified root cause of sluggish reasoning in `qwen3.5:4b`: Ollama tags revealed it has the `thinking` capability enabled, outputting hundreds of internal `<think> ... </think>` tokens at ~4 tokens/sec on CPU before answering.
+  - Benchmarked and verified that passing `"think": False` directly in Ollama chat payload disables internal reasoning loops, slashing generation latency from 120s+ to ~20s.
+  - Added `"keep_alive": "60m"` to prevent Ollama from repeatedly unloading the 3.1 GB model from CPU RAM between requests (eliminating the 85s cold-load delay).
+  - Capped token generation with `num_predict: 350`, temperature `0.2`, and anti-thinking prompt directives (`"SPEED & DIRECT REASONING DIRECTIVE"`).
+  - Added automatic regex sanitization `re.sub(r"<think>.*?</think>", "", ...)` to prevent thinking token leakage downstream.
+  - Updated frontend `NodeConfigPanel.tsx` model selector with clear speed annotations and CPU recommendations (`llama3.2:1b`, `qwen2.5:1.5b`, `qwen3.5:4b`, and Gemini Cloud ~2s).
 - **Executive HTML Email Formatting & Inline CSS Styling**:
   - Implemented `markdown_to_email_html` converter in `EmailNodeHandler`: transforms raw Markdown headers, bullet lists, code blocks, bold callouts, and links into semantic, inline-styled HTML elements.
   - Upgraded outbound dispatch to multipart MIME (`msg.set_content` plain text + `msg.add_alternative` HTML) with table-based card layout, emerald branding, metadata header, and verified delivery footer.
